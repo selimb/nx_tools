@@ -1,0 +1,8 @@
+*.egg
+env
+*.pyc
+*.exe
+bin/answers.temp
+build
+dist
+nx_tools.egg-info

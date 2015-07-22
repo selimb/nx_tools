@@ -1,0 +1,2 @@
+release:
+	bash release.sh
