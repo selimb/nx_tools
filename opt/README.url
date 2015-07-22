@@ -1,0 +1,12 @@
+[DEFAULT]
+BASEURL=https://github.com/Kreger51/nx_tools/blob/master/README.md
+[{000214A0-0000-0000-C000-000000000046}]
+Prop3=19,11
+Prop17=31,https://github.com/windows-tile.png
+Prop16=19,3
+Prop18=31,#ffffff
+[InternetShortcut]
+URL=https://github.com/Kreger51/nx_tools/blob/master/README.md
+IDList=
+IconFile=https://assets-cdn.github.com/favicon.ico
+IconIndex=1
