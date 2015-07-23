@@ -23,11 +23,11 @@ from .commands import _list
 from .commands import update
 from .commands import identifier
 
-__version__ = '1.0.0a6'
+__version__ = '1.1.0b1'
 
 CONTEXT_SETTINGS = dict(token_normalize_func=lambda x: x.lower())
-    
-    
+
+
 def make_logger(verbose):
     logger = logging.getLogger(__name__)
     if verbose:
@@ -35,8 +35,8 @@ def make_logger(verbose):
         logging.basicConfig(level=logging.DEBUG)
     else:
         logging.basicConfig()
-        
-        
+
+
 def check_for_update():
     logger = logging.getLogger(__name__)
     source = os.path.join('T:\\', 'selimb', 'nx_tools')
