@@ -4,12 +4,12 @@ from setuptools.command.bdist_egg import bdist_egg
 import shutil
 import subprocess
 
-version = '1.0.0a6'
+version = '1.1.0b1'
 name = 'nx_tools'
 
 ahk2exe = r"C:\Program Files (x86)\AutoHotkey\Compiler\Ahk2Exe.exe"
 ahk_scripts = [
-    'nx_tools/bin/nx_identifier.ahk', 
+    'nx_tools/bin/nx_identifier.ahk',
     'nx_tools/bin/task_update.ahk'
 ]
 ahk_exe = [x.replace('.ahk', '.exe') for x in ahk_scripts]
