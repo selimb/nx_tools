@@ -10,7 +10,11 @@ from ..constants import HISTORY_PATH
 def cli(pid):
     records = utils.load_json(HISTORY_PATH)
     for entry in records.itervalues():
-        if int(entry["PID"]) == pid:
+        try:
+            entry_pid = entry["PID"]
+        except TypeError:
+            continue
+        if int(entry_pid) == pid:
             break
     else:
         print("Could not find entry with PID %s" % pid)
