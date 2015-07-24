@@ -4,7 +4,7 @@ from setuptools.command.bdist_egg import bdist_egg
 import shutil
 import subprocess
 
-version = '1.1.0b1'
+version = '1.1.0b2'
 name = 'nx_tools'
 
 ahk2exe = r"C:\Program Files (x86)\AutoHotkey\Compiler\Ahk2Exe.exe"
