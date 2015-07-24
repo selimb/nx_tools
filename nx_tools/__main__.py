@@ -55,7 +55,8 @@ def check_for_update():
     answer = raw_input()
     if answer.lower() == 'n':
         return
-    print("Changelog available at %s" % (os.path.join(source, 'HISTORY')))
+    print("Changelog available at %s"
+          % os.path.join(source, 'CHANGELOG.url'))
     print("The current command will have to be re-run after installation.")
     sys.exit(subprocess.call(os.path.join(source, 'install.bat')))
 
