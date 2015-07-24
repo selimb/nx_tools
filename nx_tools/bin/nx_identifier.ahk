@@ -40,7 +40,8 @@ Else
     WinGet, PID_Array1, PID, A
 }
 title = NX Identifier
-filename=D:\nx_tools\found_entry.temp
+EnvGet, dir, USERPROFILE
+filename=%dir%\.nx_identifier.temp
 stop:=False
 Loop, %total%
 {
@@ -59,7 +60,12 @@ Display(NX_PID, index)
     global hk
     global filename
     global total
-    RunWait %comspec% /c nx_tools_utils find_entry %NX_PID% > %filename%,, Hide
+    RunWait %comspec% /c nx_tools_utils find_entry %NX_PID% > %filename%,, UseErrorLevel Hide
+    If ErrorLevel
+    {
+        MsgBox Oops. Something's wrong.
+        ExitApp
+    }
     FileRead, output, %filename%
     StringTrimRight, output, output, 2  ; Get rid of last empty line
 ;-----------------------------------------------------

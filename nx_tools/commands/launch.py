@@ -31,23 +31,13 @@ def set_tmg_var(patch):
     os.environ["UGII_TMG_DIR"] = patch
 
 
-def cyg_command(exe, directory=None):
-    cmd = ['cygstart']
-    if directory is not None:
-        directory = utils.cygwpath(directory)
-        cmd.extend(['-d', directory])
-    cmd.append(exe)
-    option = {}
-    return cmd, option
-
-
-def win_command(exe, directory=None):
-    cmd = 'start "NX"'
-    if directory is not None:
-        cmd = ' '.join((cmd, '/D', str(directory)))
-    cmd = ' '.join((cmd, exe))
-    option = dict(shell=True)
-    return cmd, option
+def find_ugraf(build_dir):
+    nxbin = os.path.join(build_dir, 'kits', 'nxbin')
+    if os.path.exists(nxbin):
+        ugraf_dir = nxbin
+    else:
+        ugraf_dir = os.path.join(build_dir, 'kits', 'ugii')
+    return os.path.join(ugraf_dir, 'ugraf.exe')
 
 
 def log_entry(PID, nx_version, build_dir, patch_dir):
@@ -98,7 +88,7 @@ def cli(config, nx_version, latest, vanilla, env_var):
             chosen_build = builds_list[0]
         else:
             chosen_build = query(builds_list, "Pick a build:")
-        ugraf_exe = os.path.join(chosen_build, 'kits', 'ugii', 'ugraf.exe')
+        ugraf_exe = find_ugraf(chosen_build)
 
     # Get Patch and set TMG
     if vanilla:
@@ -116,19 +106,16 @@ def cli(config, nx_version, latest, vanilla, env_var):
         tmg_dir = os.path.join(chosen_patch, 'tmg')
         set_tmg_var(tmg_dir)
 
-    if utils.is_running_cygwin():
-        logger.debug('Detected Cygwin')
-        cmd, option = cyg_command(ugraf_exe, working_dir)
-    else:
-        cmd, option = win_command(ugraf_exe, working_dir)
+    if working_dir is not None:
+        os.chdir(working_dir)
+    cmd = [ugraf_exe]
     logger.debug("Launch command:\n%r" % cmd)
-    logger.debug("Launch option:%r" % option)
     msg = 'Launching NX from:'
     space = len(msg)
-    msg += ' ' + str(chosen_build) + '\n'
+    msg += ' ' + str(ugraf_exe) + '\n'
     msg += '%*s %s' % (space, 'in:', working_dir) if working_dir else ''
     print(msg)
-    proc = subprocess.Popen(cmd, **option)
+    proc = subprocess.Popen(cmd)
     PID = proc.pid
     log_entry(PID=PID,
               nx_version=nx_version,
