@@ -8,10 +8,58 @@ import collections
 import json
 import logging
 import os
+import posixpath
+import subprocess
 from pprint import pformat
 
 from .constants import DEFAULT_CONFIG_PATH, USER_CONFIG_PATH
 from .exceptions import UserConfigNotFound
+
+
+def is_cygwin_path(path):
+    """Determines if path is Cygwin.
+
+    msysGit paths do not count as being Cygwin, since they're regular POSIX.
+    """
+    if path[:9] == '/cygdrive':
+        return True
+    else:
+        return False
+
+
+def is_running_cygwin():
+    try:
+        pwd = os.environ['PWD']
+    except KeyError:
+        return False
+    else:
+        if is_cygwin_path(pwd):
+            return True
+        else:
+            return False
+
+
+def cygwpath(path):
+    CYGPATH = r'C:\GnuNT\bin\cygpath.exe'
+    cmd = [CYGPATH] + ['-w', path]
+    proc = subprocess.Popen(cmd, stdout=subprocess.PIPE)
+    return proc.stdout.read().rstrip()  # Remove trailing newline
+
+
+def xabspath(path):
+    """Return the absolute path of given `path`.
+
+    Works for Cygwin, msysGit and Windows style paths.
+
+    Args:
+        path (str) : Pathname to absolutize.
+    """
+
+    if posixpath.isabs(path):  # Starts with "/"
+        if not is_cygwin_path(path):
+            path = posixpath.join('/cygdrive', path[1:])
+        return cygwpath(path)
+    return os.path.abspath(path)
 
 
 def ensure_dir_exists(directory):
@@ -94,7 +142,7 @@ def read_config():
     except UserConfigNotFound as e:
         user = {}
         logger.debug("User Config ignored: %s" % e)
-    config = recursive_dict_update(user, default)
+    config = recursive_dict_update(default, user)
     logger.debug("Result config:\n%s" % pformat(config))
     return config
 
@@ -137,7 +185,7 @@ def _get_roots(config, nx_version, key):
     Returns:
         tuple : (Root build directory, Root patches directory)
     """
-    build = config[key]['build'][nx_version] 
+    build = config[key]['build'][nx_version]
     try:
         patch = config[key]['patch'][nx_version]
     except KeyError:

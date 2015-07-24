@@ -31,6 +31,25 @@ def set_tmg_var(patch):
     os.environ["UGII_TMG_DIR"] = patch
 
 
+def cyg_command(exe, directory=None):
+    cmd = ['cygstart']
+    if directory is not None:
+        directory = utils.cygwpath(directory)
+        cmd.extend(['-d', directory])
+    cmd.append(exe)
+    option = {}
+    return cmd, option
+
+
+def win_command(exe, directory=None):
+    cmd = 'start "NX"'
+    if directory is not None:
+        cmd = ' '.join((cmd, '/D', str(directory)))
+    cmd = ' '.join((cmd, exe))
+    option = dict(shell=True)
+    return cmd, option
+
+
 def log_entry(PID, nx_version, build_dir, patch_dir):
     logger = logging.getLogger(__name__)
     try:
@@ -47,7 +66,7 @@ def log_entry(PID, nx_version, build_dir, patch_dir):
                      nx_version=nx_version,
                      build=build_dir,
                      patch=patch_dir)
-    logger.debug("New entry for counter %s:\n%s" 
+    logger.debug("New entry for counter %s:\n%s"
                  % (new_update, pformat(new_entry)))
     records[str(new_update)] = new_entry
     utils.write_json(records, HISTORY_PATH)
@@ -64,6 +83,7 @@ def log_entry(PID, nx_version, build_dir, patch_dir):
 @click.pass_obj
 def cli(config, nx_version, latest, vanilla, env_var):
     logger = logging.getLogger(__name__)
+    working_dir = config['start_in']
     logger.debug(utils.pformat_cli_args(locals()))
     build_root, patch_root = utils.get_local_roots(config, nx_version)
     # Get Build
@@ -96,12 +116,19 @@ def cli(config, nx_version, latest, vanilla, env_var):
         tmg_dir = os.path.join(chosen_patch, 'tmg')
         set_tmg_var(tmg_dir)
 
-    print("Launching NX from: %s" % ugraf_exe)
-    if 'PS1' in os.environ:
-        cmd = ['cygstart', ugraf_exe]
+    if utils.is_running_cygwin():
+        logger.debug('Detected Cygwin')
+        cmd, option = cyg_command(ugraf_exe, working_dir)
     else:
-        cmd = [ugraf_exe]
-    proc = subprocess.Popen(cmd)
+        cmd, option = win_command(ugraf_exe, working_dir)
+    logger.debug("Launch command:\n%r" % cmd)
+    logger.debug("Launch option:%r" % option)
+    msg = 'Launching NX from:'
+    space = len(msg)
+    msg += ' ' + str(chosen_build) + '\n'
+    msg += '%*s %s' % (space, 'in:', working_dir) if working_dir else ''
+    print(msg)
+    proc = subprocess.Popen(cmd, **option)
     PID = proc.pid
     log_entry(PID=PID,
               nx_version=nx_version,

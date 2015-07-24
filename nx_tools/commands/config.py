@@ -6,15 +6,16 @@ from __future__ import print_function
 
 import click
 import logging
-import os
 import shutil
 import subprocess
 
 from .._click import NamedGroupNoArgs
 from ..constants import DEFAULT_CONFIG_PATH, USER_CONFIG_PATH, NPP
+from ..exceptions import UserConfigNotFound
 from .. import utils
 
 BACKUP_EXT = '.bak'
+
 
 @click.command('config', cls=NamedGroupNoArgs,
                short_help='Configuration manipulation.')
@@ -25,10 +26,10 @@ def cli():
 @cli.command('update',
              short_help="Fill empty user configuration values with defaults.")
 def update():
-    defaults = utils.load_json(DEFAULT_CONFIG_PATH)
+    defaults = utils.read_default_config()
     try:
-        user = utils.load_json(USER_CONFIG_PATH)
-    except IOError:
+        user = utils.read_user_config()
+    except UserConfigNotFound:
         user = {}
     utils.recursive_dict_update(defaults, user)
     utils.write_json(defaults, USER_CONFIG_PATH)
@@ -48,7 +49,7 @@ def init():
     from .. import readline
     import glob
     def pause():
-        click.prompt('Press [Enter] to proceed', default='', 
+        click.prompt('Press [Enter] to proceed', default='',
                      show_default=False)
     def prompt(text, build_or_patch):
         return click.prompt(
@@ -60,7 +61,7 @@ def init():
     readline.set_completer_delims(' \t\n;')
     readline.parse_and_bind("tab: complete")
     readline.set_completer(complete)
-    
+
     config = utils.read_config()
     user = config.copy()
     del user['remote']
@@ -74,7 +75,7 @@ def init():
           " they will be created for you.")
     print("Auto-completion for paths is enabled -- use backslashes.")
     pause()
-    
+
     print('')
     print("Let's setup your local NX build locations.")
     print("The directory you input should/will contain various NX builds"
@@ -87,7 +88,7 @@ def init():
     ver = click.prompt('Default NX10 version', default='nx1001')
     user['local']['build']['nx10'] = user['local']['build'][ver]
     print('')
-    print("%s is now associated to 'nx_tools launch/update NX10'" 
+    print("%s is now associated to 'nx_tools launch/update NX10'"
           % ver.upper())
     print("It is not necessary to configure frozen builds"
           " such as NX1001!")
@@ -104,12 +105,12 @@ def init():
     for version in ('nx11', 'nx10', 'nx9'):
         ans = prompt(version, k)
         user['local'][k][version] = ans
-    
+
     print('')
-    
+
     print("Finally, let's configure the Identifier.")
     k = 'identifier_hotkey'
-    hotkey = click.prompt('Identifier Hotkey', 
+    hotkey = click.prompt('Identifier Hotkey',
                           default=config[k])
     user[k] = hotkey
     print('')
@@ -118,7 +119,7 @@ def init():
     print('You can edit your configuration at any time by running:')
     print('$ nx_tools config edit')
     utils.write_json(user, USER_CONFIG_PATH)
-    
+
 
 @cli.command('edit', short_help="Edit configuration.")
 def edit():
@@ -130,7 +131,7 @@ def edit():
     editor = NPP
     print('Opening %s with %s.' % (filename, editor))
     subprocess.Popen([editor, filename], shell=True)
-    
+
 
 @cli.command('revert', short_help='Undo last edit')
 def revert():

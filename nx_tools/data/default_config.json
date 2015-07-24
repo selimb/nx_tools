@@ -25,6 +25,6 @@
             "nx11": "downloads/patches/nx/nx11",
             "nx10": "downloads/patches/nx/nx10"
         }
-
-    }
+    },
+    "start_in": null
 }
