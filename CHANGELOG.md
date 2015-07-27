@@ -1,5 +1,9 @@
 # Ch-ch-ch-ch-changes
 
+## 1.1.1
+
+Fix [bug](https://github.com/beselim/nx_tools/issues/13) in auto-updater.
+
 ## 1.1.0
 
 Add `start_in` key in config (`null` by default). This sets the working directory whenever you launch NX. 

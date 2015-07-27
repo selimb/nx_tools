@@ -10,7 +10,7 @@ if [ $package_version != $setup_version ] ; then
 fi
 version=$setup_version
 echo Version=$version
-echo Did you update HISTORY.md?
+echo Did you update CHANGELOG.md?
 echo Did you commit your changes?
 read -p "Press any key to start release"
 
@@ -24,6 +24,6 @@ echo Rolling out
 echo ==========
 dest="/cygdrive/t/selimb/nx_tools"
 echo Syncing opt/
-rsync -r --del opt/ $dest 
+rsync -r --del opt/ $dest
 echo Echoing version number
 echo $version > $dest/version.txt
