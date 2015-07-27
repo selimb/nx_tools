@@ -20,7 +20,7 @@ IfEqual, err, 200
 }
 IfEqual, err, 203
 {
-    option = ""
+    option =
     msg = update
     goto, Update
 }
