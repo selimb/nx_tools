@@ -4,8 +4,8 @@
     "local": {
         "build": {
             "nx11": "D:\\NX\\NX11\\builds",
-            "nx10": "Y:\\NX1001\\UGII\\ugraf.exe",
             "nx1003": "D:\\NX\\NX10\\builds\\1003",
+            "nx1002": "Y:\\NX1002\\UGII\\ugraf.exe",
             "nx1001": "Y:\\NX1001\\UGII\\ugraf.exe",
             "nx1000": "Y:\\NX100\\UGII\\ugraf.exe",
             "nx9": "Y:\\NX903\\UGII\\ugraf.exe"
