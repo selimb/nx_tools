@@ -1,5 +1,14 @@
 # Ch-ch-ch-ch-changes
 
+## 1.1.3
+
+- Add NX1002 location in Y:\ drive to default configuration
+- Ensure a local starting directory for frozen builds.
+
+## 1.1.2
+
+Cleaner exception catching in Launcher prompt.
+
 ## 1.1.1
 
 Fix [bug](https://github.com/beselim/nx_tools/issues/13) in auto-updater.

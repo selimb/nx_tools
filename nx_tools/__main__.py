@@ -23,7 +23,7 @@ from .commands import _list
 from .commands import update
 from .commands import identifier
 
-__version__ = '1.1.2'
+__version__ = '1.1.3'
 
 CONTEXT_SETTINGS = dict(token_normalize_func=lambda x: x.lower())
 
