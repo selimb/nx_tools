@@ -61,7 +61,7 @@ If NX is the active window when the hotkey is pressed, build/patch data is only 
 
 The identification feature is accessed through an [AutoHotkey](http://www.autohotkey.com/) executable (no installation required). The Identifier can be launched with:
 ```
-nx_tools start_identifier
+nx_tools identifier
 ```
 It will stay active in the tray (notification area) and enable the hotkey as long as it is active, i.e. you do not need to run it everytime you want to use the hotkey. 
 
