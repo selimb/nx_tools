@@ -8,7 +8,6 @@ import logging
 import os
 from pprint import pformat
 import subprocess
-import sys
 
 from ..constants import HISTORY_PATH, HISTORY_MAX_RECORDS
 from .. import utils
@@ -18,12 +17,11 @@ from . import _list
 def query(dir_listing, msg):
     print(msg)
     print(_list.pformat_directories(dir_listing))
-    chosen_idx = int(raw_input('> '))
-    try:
-        return dir_listing[chosen_idx]
-    except IndexError:
-        print("%i not valid option." % chosen_idx)
-        sys.exit(1)
+    chosen_idx = click.prompt(
+            '> ', prompt_suffix='',
+            type=click.IntRange(min=0, max=len(dir_listing) - 1)
+    )
+    return dir_listing[chosen_idx]
 
 
 def set_tmg_var(patch):
