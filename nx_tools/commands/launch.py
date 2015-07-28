@@ -80,6 +80,8 @@ def cli(config, nx_version, latest, vanilla, env_var):
         logger.debug("%s is Frozen." % build_root)
         chosen_build = build_root
         ugraf_exe = chosen_build
+        if working_dir is None:
+            working_dir = 'D:\\'
     else:
         builds_list = _list.list_directories(build_root)
         if latest:
