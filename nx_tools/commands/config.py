@@ -85,11 +85,6 @@ def init():
     for version in ('nx11', 'nx1003'):
         ans = prompt(version, k)
         user['local'][k][version] = ans
-    ver = click.prompt('Default NX10 version', default='nx1001')
-    user['local']['build']['nx10'] = user['local']['build'][ver]
-    print('')
-    print("%s is now associated to 'nx_tools launch/update NX10'"
-          % ver.upper())
     print("It is not necessary to configure frozen builds"
           " such as NX1001!")
     print("The Launcher detects frozen builds"

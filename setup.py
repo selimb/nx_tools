@@ -48,7 +48,6 @@ setup(
     entry_points={
         'console_scripts': [
             'nx_tools = nx_tools.__main__:nx_tools',
-            'nxt = nx_tools.__main__:nx_tools',
             'nx_tools_utils = nx_tools.__main__:nx_tools_utils'
         ]
     },
