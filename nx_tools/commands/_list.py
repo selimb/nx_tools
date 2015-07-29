@@ -11,8 +11,8 @@ import time
 from .. import utils
 
 FMT = "{0}. {1} -- created: {2}"
-    
-    
+
+
 def list_directories(root_dir):
     """List absolute paths to directories inside `root_dir`.
 
@@ -36,13 +36,19 @@ def fmt_ctime(x):
     return time.strftime("%a %b %d", t)
 
 
-def pformat_directories(l):
+def pformat_directories(l, absolute=False):
     """Pretty print directory listing.
 
     Directories are listed along with the file creation date.
     """
-    fmt_dir = lambda i, d: FMT.format(i, os.path.basename(d), fmt_ctime(d))
-    return '\n'.join(fmt_dir(i, d) for i, d in enumerate(l))
+    def fmt_dir(index, directory, absolute):
+        transform = os.path.basename
+        if absolute:
+            transform = lambda x: x
+        return FMT.format(index, transform(directory), fmt_ctime(directory))
+
+    return '\n'.join(fmt_dir(i, d, absolute=absolute)
+                     for i, d in enumerate(l))
 
 
 @click.command('list', short_help='List available builds and patches.')
@@ -51,13 +57,17 @@ def pformat_directories(l):
               help='Only list builds.')
 @click.option('-p', '--patch', is_flag=True,
               help='Only list patches.')
+@click.option('--absolute', is_flag=True,
+              help='List absolute paths')
 @click.pass_obj
-def cli(config, nx_version, build, patch):
+def cli(config, nx_version, build, patch, absolute):
     logger = logging.getLogger(__name__)
     logger.debug(utils.pformat_cli_args(locals()))
+
     def do_print(header, root):
         print(header)
-        print(pformat_directories(list_directories(root)))
+        print(pformat_directories(list_directories(root),
+                                  absolute=absolute))
 
     build_root, patch_root = utils.get_local_roots(config, nx_version)
     logger.debug('Build root: %s' % build_root)
