@@ -82,6 +82,11 @@ Should you wish to modify it you can edit the *Update NX11* task in the **Task S
 %SYSTEMROOT%\System32\taskschd.msc
 ```
 
+#### Bash aliases
+
+Sample [bash aliases](http://tldp.org/LDP/abs/html/aliases.html) are available at `T:\selimb\nx_tools\sample_aliases`.
+
+
 ## I don't like having to run commands through the command-line
 
 Simple batch files are provided in `T:\selimb\nx_tools\sample_batch` so that you don't have to manually enter the command-line. You may copy those anywhere you want on your machine. If you create shortcuts, you can even pin those to taskbar or start menu!

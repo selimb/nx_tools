@@ -1,0 +1,3 @@
+alias nx11='nx_tools launch nx11'
+alias nx11l='nx11 --latest'
+alias nx11u='nx_tools update nx11 && nx11l'
