@@ -3,6 +3,7 @@
 ## 1.1.4
 
 - Add `--absolute` flag to `nx_tools list`. The goal is to aid in setting `UGII_TMG_DIR` without opening Windows Explorer and navigating through directories. Maybe in the future an `nx_tools set_tmg` command will be added (if requested).
+- Add `-n|--name` flag to `nx_tools launch` to tag a process with a name. This shows up in the Identifier as the window title.
 
 ## 1.1.3
 

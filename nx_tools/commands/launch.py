@@ -38,7 +38,7 @@ def find_ugraf(build_dir):
     return os.path.join(ugraf_dir, 'ugraf.exe')
 
 
-def log_entry(PID, nx_version, build_dir, patch_dir):
+def log_entry(PID, nx_version, build_dir, patch_dir, name):
     logger = logging.getLogger(__name__)
     try:
         records = utils.load_json(HISTORY_PATH)
@@ -53,7 +53,9 @@ def log_entry(PID, nx_version, build_dir, patch_dir):
     new_entry = dict(PID=PID,
                      nx_version=nx_version,
                      build=build_dir,
-                     patch=patch_dir)
+                     patch=patch_dir,
+                     name=name)
+
     logger.debug("New entry for counter %s:\n%s"
                  % (new_update, pformat(new_entry)))
     records[str(new_update)] = new_entry
@@ -68,8 +70,10 @@ def log_entry(PID, nx_version, build_dir, patch_dir):
               help="Use build's internal TMG.")
 @click.option('--env-var', is_flag=True,
               help="Use user UGII_TMG_DIR environment variable.")
+@click.option('-n', '--name', type=click.STRING,
+              help="Name to be associated with process.")
 @click.pass_obj
-def cli(config, nx_version, latest, vanilla, env_var):
+def cli(config, nx_version, latest, vanilla, env_var, name):
     logger = logging.getLogger(__name__)
     working_dir = config['start_in']
     logger.debug(utils.pformat_cli_args(locals()))
@@ -120,4 +124,5 @@ def cli(config, nx_version, latest, vanilla, env_var):
     log_entry(PID=PID,
               nx_version=nx_version,
               build_dir=os.path.basename(chosen_build),
-              patch_dir=os.path.basename(chosen_patch))
+              patch_dir=os.path.basename(chosen_patch),
+              name=name)

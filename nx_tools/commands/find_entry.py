@@ -24,5 +24,9 @@ def cli(pid):
     ret["BUILD"] = os.path.basename(entry["build"])
     ret["PATCH"] = os.path.basename(entry["patch"])
     ret["NX VERSION"] = entry["nx_version"]
+    name = entry["name"]
+    if name:
+        ret["NAME"] = name
+
     for k, v in ret.iteritems():
         print("%s: %s" % (k, v))

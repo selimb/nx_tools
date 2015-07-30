@@ -54,6 +54,8 @@ Should you wish to launch NX with the current `UGII_TMG_DIR` or with NX's intern
 
 *New in 1.1.0*: You can use the `start_in` key in the configuration to set the working directory -- equivalent to "Start in:" in a Windows Shortcut.
 
+*New in 1.1.4*: Launch NX with a `--name` to tag the process. This shows up in the [Identifier](#identifier) as the window title.
+
 #### Identifier
 The Identifier allows you to query the Build and Patch for active NX processes with the use of a user-defined hotkey -- *F9* by default -- provided NX was launched with the *NX Tools* Launcher. The hotkey can be defined in the configuration file. 
 

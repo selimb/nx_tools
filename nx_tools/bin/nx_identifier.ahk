@@ -21,7 +21,7 @@ IfNotEqual, active_name, ugraf.exe
     IfEqual, nx_list, 0
     {
         MsgBox Can't find NX process.
-        Return  ; Must have only one NX open.
+        Return  ; Must have at least one NX open.
     }
     IfGreater, nx_list, 1
     {
@@ -68,9 +68,18 @@ Display(NX_PID, index)
     }
     FileRead, output, %filename%
     StringTrimRight, output, output, 2  ; Get rid of last empty line
+
+    needle=NAME: (.*)\R
+    FoundName := RegExMatch(output, needle, name)
+    If FoundName
+    {
+        title=%name1%
+        output := RegExReplace(output, needle)
+    }
+    Else
+        title=NX Identifier
 ;-----------------------------------------------------
 ; GUI BLOCK
-    title=NX Identifier
     Gui, Add, Edit, ReadOnly, %output%
     Gui, Add, Text,, %index%/%total%
     Gui, Show,, %title%
