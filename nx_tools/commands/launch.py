@@ -72,10 +72,15 @@ def log_entry(PID, nx_version, build_dir, patch_dir, name):
               help="Use user UGII_TMG_DIR environment variable.")
 @click.option('-n', '--name', type=click.STRING,
               help="Name to be associated with process.")
+@click.option('--cwd', is_flag=True,
+              help="Use current directory as working directory.")
 @click.pass_obj
-def cli(config, nx_version, latest, vanilla, env_var, name):
+def cli(config, nx_version, latest, vanilla, env_var, name, cwd):
     logger = logging.getLogger(__name__)
-    working_dir = config['start_in']
+    if cwd:
+        working_dir = os.getcwd()
+    else:
+        working_dir = config['start_in']
     logger.debug(utils.pformat_cli_args(locals()))
     build_root, patch_root = utils.get_local_roots(config, nx_version)
     # Get Build
