@@ -1,5 +1,9 @@
 # Ch-ch-ch-ch-changes
 
+## 1.1.6
+
+-  See [#16](https://github.com/beselim/nx_tools/issues/16).
+
 ## 1.1.5
 
 - Add `--cwd` flag to Launcher to use current directory as working directory.

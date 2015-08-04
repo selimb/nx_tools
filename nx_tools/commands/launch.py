@@ -29,12 +29,18 @@ def set_tmg_var(patch):
     os.environ["UGII_TMG_DIR"] = patch
 
 
-def find_ugraf(build_dir):
-    nxbin = os.path.join(build_dir, 'kits', 'nxbin')
-    if os.path.exists(nxbin):
-        ugraf_dir = nxbin
+def find_ugraf(build_dir, nxbin):
+    ugii_dir = os.path.join(build_dir, 'kits', 'ugii')
+    nxbin_dir = os.path.join(build_dir, 'kits', 'nxbin')
+    if os.path.exists(nxbin_dir):
+        if nxbin:
+            ugraf_dir = nxbin_dir
+        else:
+            print("WARNING: You won't be able to identify this process."
+                  " See issue #16.")
+            ugraf_dir = ugii_dir
     else:
-        ugraf_dir = os.path.join(build_dir, 'kits', 'ugii')
+        ugraf_dir = ugii_dir
     return os.path.join(ugraf_dir, 'ugraf.exe')
 
 
@@ -74,8 +80,10 @@ def log_entry(PID, nx_version, build_dir, patch_dir, name):
               help="Name to be associated with process.")
 @click.option('--cwd', is_flag=True,
               help="Use current directory as working directory.")
+@click.option('--nxbin', is_flag=True,
+              help="Launch ugraf.exe from 'nxbin' if possible.")
 @click.pass_obj
-def cli(config, nx_version, latest, vanilla, env_var, name, cwd):
+def cli(config, nx_version, latest, vanilla, env_var, name, cwd, nxbin):
     logger = logging.getLogger(__name__)
     if cwd:
         working_dir = os.getcwd()
@@ -97,7 +105,7 @@ def cli(config, nx_version, latest, vanilla, env_var, name, cwd):
             chosen_build = builds_list[0]
         else:
             chosen_build = query(builds_list, "Pick a build:")
-        ugraf_exe = find_ugraf(chosen_build)
+        ugraf_exe = find_ugraf(chosen_build, nxbin)
 
     # Get Patch and set TMG
     if vanilla:
