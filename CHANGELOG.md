@@ -1,5 +1,10 @@
 # Ch-ch-ch-ch-changes
 
+## 1.1.7
+
+- Fix [#17](https://github.com/beselim/nx_tools/issues/17).
+- Improve error message for missing key (no ugly traceback).
+
 ## 1.1.6
 
 -  See [#16](https://github.com/beselim/nx_tools/issues/16).

@@ -13,6 +13,7 @@ import subprocess
 import sys
 
 from .. import utils
+from .. import exceptions
 
 
 def get_process_output(process):
@@ -71,31 +72,76 @@ def is_new(f, target_dir):
 
 class _Updater(object):
 
+    item_name = None
+    item_name_plural = None
+
     def __init__(self, nx_version, config, source_key):
         self.logger = logging.getLogger(__name__)
         self.nx_version = nx_version.lower()
-        self.source_dir = config['remote'][source_key][nx_version]
-        self.target_dir = config['local'][source_key][nx_version]
+        try:
+            self.remote_dir = config['remote'][source_key][nx_version]
+            self.local_dir = config['local'][source_key][nx_version]
+        except KeyError:
+            print("No configuration found for %s %s."
+                  % (nx_version, self.item_name_plural))
+            raise exceptions.NXToolsError
+
         self.zip_exe = config['7z_exe']
-        utils.ensure_dir_exists(self.target_dir)
+        self.new_items = None
+        utils.ensure_dir_exists(self.local_dir)
 
     def _is_new(self, f):
-        return is_new(f, self.target_dir)
+        return is_new(f, self.local_dir)
+
+    def update(self):
+        if self.new_items is None:
+            self.check()
+        if self.new_items == []:
+            print("No new %s." % self.item_name)
+            return
+
+        number = len(self.new_items)
+        if number != 1:
+            print("%i new %s found:" % (number, self.item_name_plural))
+        else:
+            print("One new %s found:" % self.item_name)
+        print('\n'.join(map(get_filename, self.new_items)))
+        for item in self.new_items:
+            dest = os.path.join(self.local_dir, os.path.basename(item))
+            self._transfer(item, dest)
+            extract(dest, exe=self.zip_exe)
+        print("Success!")
+
+
+def _check(updater, nx_version, config):
+    try:
+        my_updater = updater(nx_version, config)
+    except exceptions.NXToolsError:
+        return False
+    return my_updater.check()
+
+
+def _update(updater, nx_version, config):
+    try:
+        my_updater = updater(nx_version, config)
+    except exceptions.NXToolsError:
+        return False
+    my_updater.update()
 
 
 class _TMGUpdater(_Updater):
+    item_name = 'patch'
+    item_name_plural = 'patches'
 
     def __init__(self, nx_version, config):
         super(_TMGUpdater, self).__init__(nx_version, config, 'patch')
-
-        self.new_patches = None
         self._connect()
 
     def _connect(self):
         # print("Connecting to FTP server...")
         ftp = ftplib.FTP('ftp')
         ftp.login()
-        ftp.cwd(self.source_dir)
+        ftp.cwd(self.remote_dir)
         self.ftp = ftp
 
     def _find_windows_patches(self):
@@ -110,143 +156,93 @@ class _TMGUpdater(_Updater):
                 found.append(name)
         return found
 
-    def _download(self, ftp_file, target_file):
+    def _transfer(self, ftp_file, dest_file):
         print("Downloading patch to local directory...")
+        self.logger.debug("Patch downloaded to: " + dest_file)
         try:
-            with open(target_file, "wb") as fh:
+            with open(dest_file, "wb") as fh:
                 self.ftp.retrbinary("RETR " + ftp_file, fh.write)
         except IOError:
             print("FATAL: Check local directory exists.")
             raise
-        self.logger.debug("Patch downloaded to: " + target_file)
 
     def check(self):
-        self.new_patches = []
+        self.new_items = []
         self.logger.debug("Checking for %s patch on FTP server..." %
                           self.nx_version.upper())
         windows_patches = self._find_windows_patches()
         if windows_patches == []:
             print("Could not find windows patch.")
-            return
+            return False
 
         new_patches = [patch for patch in windows_patches
                        if self._is_new(patch)]
         if new_patches == []:
             self.logger.debug("Not new patch:\n%r" % windows_patches)
-            return
+            return False
 
-        self.new_patches = new_patches
-        return bool(new_patches)
-
-    def update(self):
-        if self.new_patches is None:
-            self.check()
-        if self.new_patches == []:
-            print("No new patch.")
-            return
-
-        if len(self.new_patches) != 1:
-            print("Multiple new patches found:")
-            for i, patch in enumerate(self.new_patches):
-                print("{0}. {1}".format(i, patch))
-            print("Please choose one")
-            selection = int(raw_input('> '))
-        else:
-            selection = 0
-        src_zip = self.new_patches.pop(selection)
-        print("New patch found: %s" % get_filename(src_zip))
-
-        target_zip = os.path.join(self.target_dir, src_zip)
-        self._download(src_zip, target_zip)
-        extract(target_zip, self.zip_exe)
-        print("Success!")
+        self.new_items = new_patches
+        return True
 
 
 def check_TMG(nx_version, config):
-    updater = _TMGUpdater(nx_version, config)
-    return updater.check()
+    return _check(_TMGUpdater, nx_version, config)
 
 
 def update_TMG(nx_version, config):
-    updater = _TMGUpdater(nx_version, config)
-    updater.update()
+    _update(_TMGUpdater, nx_version, config)
 
 
 class _BuildUpdater(_Updater):
-
+    item_name = 'build'
+    item_name_plural = 'builds'
     def __init__(self, nx_version, config):
         super(_BuildUpdater, self).__init__(nx_version, config, 'build')
-        self.new_builds = None
 
     def _find_builds(self):
-        zips = list(glob.glob(os.path.join(self.source_dir, "*.7z")))
+        zips = list(glob.glob(os.path.join(self.remote_dir, "*.7z")))
         return zips
 
-    def _copy(self, src, target):
+    def _transfer(self, src, dest):
         print("Copying to local directory...")
+        self.logger.debug("Copying: {0}\nto: {1}".format(src, dest))
         try:
-            shutil.copy(src, target)
+            shutil.copy(src, dest)
         except IOError as e:
             print('Could not copy\n%s' % e)
             sys.exit(1)
-        self.logger.debug("Copied: {0}\nto: {1}".format(src, target))
 
     def check(self):
-        self.new_builds = []
-        self.logger.debug("Checking for %s build in Luc's T drive..." 
+        self.new_items = []
+        self.logger.debug("Checking for %s build in Luc's T drive..."
                           % self.nx_version.upper())
         builds = self._find_builds()
         new_builds = [build for build in builds if self._is_new(build)]
         if new_builds == []:
             self.logger.debug("Not new build:\n%r" % builds)
-            return
+            return False
 
-        self.new_builds = new_builds
-        return bool(new_builds)
-
-    def update(self):
-        if self.new_builds is None:
-            self.check()
-        if self.new_builds == []:
-            print("No new build.")
-            return
-
-        if len(self.new_builds) != 1:
-            print("Multiple new builds found:")
-            for i, patch in enumerate(self.new_builds):
-                print("{0}. {1}".format(i, patch))
-            print("Please choose one")
-            selection = int(raw_input('> '))
-        else:
-            selection = 0
-        src_zip = self.new_builds.pop(selection)
-        print("New build found: %s" % get_filename(src_zip))
-
-        target_zip = os.path.join(self.target_dir, os.path.basename(src_zip))
-        self._copy(src_zip, target_zip)
-        extract(target_zip, self.zip_exe)
-        print("Success!")
+        self.new_items = new_builds
+        return True
 
 
 def is_frozen_build(nx_version, config):
     logger = logging.getLogger(__name__)
-    if utils.is_exe(config['local']['build'][nx_version]):
-        logger.debug("Frozen build: executable")
-        return True
     if nx_version not in config['remote']['build']:
         logger.debug("No remote found for this version.")
+        return True
+    if utils.is_exe(config['local']['build'][nx_version]):
+        logger.debug("Frozen build: executable")
         return True
     return False
 
 
 def check_build(nx_version, config):
-    updater = _BuildUpdater(nx_version, config)
-    return updater.check()
+    return _check(_BuildUpdater, nx_version, config)
 
 
 def update_build(nx_version, config):
-    updater = _BuildUpdater(nx_version, config)
-    updater.update()
+    _update(_BuildUpdater, nx_version, config)
 
 
 @click.command('check', short_help="Used internally by the Task Scheduler.")
@@ -260,6 +256,8 @@ def check_cli(config, nx_version):
         202 : New Patch
         203 : Both New Build and New Patch
     """
+    new_build = False
+    new_patch = False
     if not is_frozen_build(nx_version, config):
         new_build = check_build(nx_version, config)
     new_patch = check_TMG(nx_version, config)
