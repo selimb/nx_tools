@@ -4,6 +4,7 @@
 
 - Fix [#17](https://github.com/beselim/nx_tools/issues/17).
 - Improve error message for missing key (no ugly traceback).
+- Add `delete_zip` configuration key. If set to `true`, the patch/build zip is deleted after complete extraction.
 
 ## 1.1.6
 

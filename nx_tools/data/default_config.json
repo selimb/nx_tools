@@ -26,5 +26,6 @@
             "nx10": "downloads/patches/nx/nx10"
         }
     },
-    "start_in": null
+    "start_in": null,
+    "delete_zip": false
 }

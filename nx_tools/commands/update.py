@@ -59,7 +59,9 @@ def get_filename(filepath):
 
 
 def delete_file(filepath):
-    print("Deleting file:" + filepath)
+    logger = logging.getLogger(__name__)
+    logger.debug("Deleting file: " + filepath)
+    print("Deleting archive...")
     os.remove(filepath)
 
 
@@ -85,7 +87,7 @@ class _Updater(object):
             print("No configuration found for %s %s."
                   % (nx_version, self.item_name_plural))
             raise exceptions.NXToolsError
-
+        self.delete_zip = config["delete_zip"]
         self.zip_exe = config['7z_exe']
         self.new_items = None
         utils.ensure_dir_exists(self.local_dir)
@@ -107,9 +109,11 @@ class _Updater(object):
             print("One new %s found:" % self.item_name)
         print('\n'.join(map(get_filename, self.new_items)))
         for item in self.new_items:
-            dest = os.path.join(self.local_dir, os.path.basename(item))
-            self._transfer(item, dest)
-            extract(dest, exe=self.zip_exe)
+            dest_zip = os.path.join(self.local_dir, os.path.basename(item))
+            self._transfer(item, dest_zip)
+            extract(dest_zip, exe=self.zip_exe)
+            if self.delete_zip == True:
+                delete_file(dest_zip)
         print("Success!")
 
 
