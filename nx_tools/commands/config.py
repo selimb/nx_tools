@@ -5,6 +5,7 @@ Contains defaults.
 from __future__ import print_function
 
 import click
+import json
 import logging
 import shutil
 import subprocess
@@ -144,3 +145,9 @@ def revert():
         else:
             print(e)
             return
+
+
+@cli.command('list', short_help='List all variables in configuration.')
+def list():
+    config = utils.read_config()
+    print(json.dumps(config, indent=4, separators=(',', ': '), sort_keys=True))

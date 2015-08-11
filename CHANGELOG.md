@@ -1,5 +1,10 @@
 # Ch-ch-ch-ch-changes
 
+## 1.1.8
+
+- Fix [#18](https://github.com/beselim/nx_tools/issues/18).
+- Add `config list` command to show current config.
+
 ## 1.1.7
 
 - Fix [#17](https://github.com/beselim/nx_tools/issues/17).

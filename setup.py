@@ -1,10 +1,23 @@
+import ast
 import os
+import re
 from setuptools import setup, find_packages
 from setuptools.command.bdist_egg import bdist_egg
 import shutil
 import subprocess
 
-version = '1.1.7'
+
+def get_version():
+    versionfile = os.path.join('nx_tools', '__main__.py')
+    version_re = re.compile(r'__version__\s+=\s+(.*)')
+    with open(versionfile, 'r') as f:
+        version = str(ast.literal_eval(
+                version_re.search(f.read().decode('utf-8')).group(1)
+        ))
+    return version
+
+
+version = get_version()
 name = 'nx_tools'
 
 ahk2exe = r"C:\Program Files (x86)\AutoHotkey\Compiler\Ahk2Exe.exe"

@@ -30,18 +30,23 @@ def set_tmg_var(patch):
 
 
 def find_ugraf(build_dir, nxbin):
-    ugii_dir = os.path.join(build_dir, 'kits', 'ugii')
-    nxbin_dir = os.path.join(build_dir, 'kits', 'nxbin')
-    if os.path.exists(nxbin_dir):
-        if nxbin:
-            ugraf_dir = nxbin_dir
+    logger = logging.getLogger(__name__)
+    ugii_ugraf = os.path.join(build_dir, 'kits', 'ugii', 'ugraf.exe')
+    nxbin_ugraf = os.path.join(build_dir, 'kits', 'nxbin', 'ugraf.exe')
+    nxbin_exists = os.path.exists(nxbin_ugraf)
+    ugii_exists = os.path.exists(ugii_ugraf)
+    if nxbin_exists:
+        if nxbin or not ugii_exists:
+            return nxbin_ugraf
         else:
             print("WARNING: You won't be able to identify this process."
                   " See issue #16.")
-            ugraf_dir = ugii_dir
-    else:
-        ugraf_dir = ugii_dir
-    return os.path.join(ugraf_dir, 'ugraf.exe')
+    if not ugii_exists:
+        print("Could not find ugraf.exe.\n")
+        raise click.Abort
+
+    return ugii_ugraf
+
 
 
 def log_entry(PID, nx_version, build_dir, patch_dir, name):
@@ -123,7 +128,7 @@ def cli(config, nx_version, latest, vanilla, env_var, name, cwd, nxbin):
         tmg_dir = os.path.join(chosen_patch, 'tmg')
         set_tmg_var(tmg_dir)
 
-    if working_dir is not None:
+    if working_dir:
         os.chdir(working_dir)
     cmd = [ugraf_exe]
     logger.debug("Launch command:\n%r" % cmd)
