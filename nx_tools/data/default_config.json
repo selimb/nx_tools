@@ -19,7 +19,7 @@
     "remote": {
         "build": {
             "nx1003": "T:\\luc\\NX\\NX1003GroupKits",
-            "nx11": "T:\\luc\\NX\\NX1100GroupKits"
+            "nx11": "T:\\luc\\NX\\NX1100_GroupKits"
         },
         "patch": {
             "nx11": "downloads/patches/nx/nx11",

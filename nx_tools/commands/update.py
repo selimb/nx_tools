@@ -204,6 +204,9 @@ class _BuildUpdater(_Updater):
         super(_BuildUpdater, self).__init__(nx_version, config, 'build')
 
     def _find_builds(self):
+        if not os.path.exists(self.remote_dir):
+            raise IOError
+
         zips = list(glob.glob(os.path.join(self.remote_dir, "*.7z")))
         return zips
 
@@ -220,7 +223,11 @@ class _BuildUpdater(_Updater):
         self.new_items = []
         self.logger.debug("Checking for %s build in Luc's T drive..."
                           % self.nx_version.upper())
-        builds = self._find_builds()
+        try:
+            builds = self._find_builds()
+        except IOError:
+            print("Can't find remote directory: %s" % self.remote_dir)
+            return False
         new_builds = [build for build in builds if self._is_new(build)]
         if new_builds == []:
             self.logger.debug("Not new build:\n%r" % builds)

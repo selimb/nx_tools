@@ -32,7 +32,7 @@ def list_directories(root_dir):
 
 
 def fmt_ctime(x):
-    t = time.gmtime(os.path.getctime(x))
+    t = time.gmtime(os.path.getmtime( os.path.join(x, 'kits')) )
     return time.strftime("%a %b %d", t)
 
 
