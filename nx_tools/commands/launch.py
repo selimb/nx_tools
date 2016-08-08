@@ -117,8 +117,8 @@ def cli(config, nx_version, latest, vanilla, env_var, name, cwd, nxbin):
         chosen_patch = ""
         set_tmg_var("")
     elif env_var:
-        print("Not setting UGII_TMG_DIR.")
         chosen_patch = os.environ['UGII_TMG_DIR']
+        print("Not setting UGII_TMG_DIR. Currently set to: %s" % chosen_patch)
     else:
         patches_list = _list.list_directories(patch_root)
         if latest:
