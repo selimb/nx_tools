@@ -8,6 +8,7 @@
 """
 
 import click
+from pkg_resources import parse_version
 import logging
 import os
 import subprocess
@@ -47,7 +48,7 @@ def check_for_update():
         logger.debug("Could not open %s" % vtxt)
         return
     logger.debug("Version at %s : %s" % (vtxt, new_version))
-    if new_version <= __version__:
+    if parse_version(new_version) <= parse_version(__version__):
         return
     print("Update is available: %s " % new_version)
     question = " Do you want to upgrade [Y/n]? "

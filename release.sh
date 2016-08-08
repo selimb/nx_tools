@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 py26="/cygdrive/c/Python26/python.exe"
 echo Getting version
-package_version=$($py26 -c "from nx_tools import __version__; print __version__")
+# package_version=$($py26 -c "from nx_tools import __version__; print __version__")
 setup_version=$($py26 setup.py --version)
-if [ $package_version != $setup_version ] ; then
-	echo FATAL
-	echo "Setup.py version $setup_version != Package version $package_version"
-	return
-fi
+# if [ $package_version != $setup_version ] ; then
+# 	echo FATAL
+# 	echo "Setup.py version $setup_version != Package version $package_version"
+# 	return
+# fi
 version=$setup_version
 echo Version=$version
 echo Did you update CHANGELOG.md?
