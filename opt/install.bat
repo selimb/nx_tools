@@ -20,6 +20,7 @@ if not defined egg (
 "C:\Python26\Scripts\easy_install.exe" %egg% >NUL
 endlocal
 echo Installation Complete!
+PAUSE
 exit /b 0
 :oops
 PAUSE
