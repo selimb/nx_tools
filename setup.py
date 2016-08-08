@@ -67,7 +67,7 @@ setup(
     scripts=ahk_exe,
     include_package_data=True,
     install_requires=[
-        'click>=4.0',
+        'click==5.1',
         'pyreadline==2.0'
     ],
     cmdclass={
