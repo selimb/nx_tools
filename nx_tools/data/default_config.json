@@ -3,6 +3,7 @@
     "identifier_hotkey": "F9",
     "local": {
         "build": {
+            "nx12":"D:\\NX\\NX12\\builds",
             "nx11": "D:\\NX\\NX11\\builds",
             "nx1003": "D:\\NX\\NX10\\builds\\1003",
             "nx1002": "Y:\\NX1002\\UGII\\ugraf.exe",
@@ -11,19 +12,22 @@
             "nx9": "Y:\\NX903\\UGII\\ugraf.exe"
         },
         "patch": {
+            "nx12":"D:\\NX\\NX12\\patches",
             "nx11": "D:\\NX\\NX11\\patches",
             "nx10": "D:\\NX\\NX10\\patches",
             "nx9": "D:\\NX\\NX9\\patches"
         }
     },
     "remote": {
-        "build": {
-            "nx1003": "T:\\luc\\NX\\NX1003GroupKits",
-            "nx11": "T:\\luc\\NX\\NX1100_GroupKits"
+        "build":{
+            "nx12":"T:\\luc\\NX\\NX1200\\Group_Kits",
+            "nx11":"T:\\luc\\NX\\NX1100_PhaseKits",
+            "nx1003":"T:\\luc\\NX\\NX1003GroupKits"
         },
-        "patch": {
-            "nx11": "downloads/patches/nx/nx11",
-            "nx10": "downloads/patches/nx/nx10"
+        "patch":{
+            "nx12":"downloads/patches/nx/nx12",
+            "nx11":"downloads/patches/nx/nx11",
+            "nx10":"downloads/patches/nx/nx10"
         }
     },
     "start_in": null,
