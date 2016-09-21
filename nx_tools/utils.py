@@ -45,14 +45,6 @@ def recursive_dict_update(d, u):
 
 
 def read_default_config():
-    """Read default configuration from DEFAULT_CONFIG_PATH.
-
-    Returns:
-        dict
-
-    Raises:
-        AssertionError: If the config cannot be found.
-            This is supposed to be in package_data"""
     try:
         return load_json(DEFAULT_CONFIG_PATH)
     except IOError:
@@ -61,14 +53,6 @@ def read_default_config():
 
 
 def read_user_config():
-    """Read user configuration from USER_CONFIG_PATH.
-
-    Returns:
-        dict
-
-    Raises:
-        UserConfigNotFound
-    """
     try:
         return load_json(USER_CONFIG_PATH)
     except IOError:
@@ -79,13 +63,7 @@ def read_user_config():
 
 
 def read_config():
-    """Read a combined user/default config.
-
-    User takes precedence over default.
-
-    Returns:
-        dict
-    """
+    """User takes precedence over default."""
     logger = logging.getLogger(__name__)
     default = read_default_config()
     try:
@@ -100,55 +78,38 @@ def read_config():
 
 
 def is_exe(value):
-    """Simply determines if `value` is an executable file.
-
-    Returns:
-        bool"""
     if value[-4:] == '.exe':
         return True
     else:
         return False
 
 
-def pformat_cli_args(locs):
-    """Pretty format locals.
-
-    To be used in to logger.debug input arguments of a CLI command. The 'conf'
-    key is always ignored.
-
-    Args:
-        locs (dict): Local symbol table
-
-    Returns:
-        str
-    """
-    return 'ARGS\n' + '\n'.join(('%s : %s' % (k, v) for k, v in locs.iteritems()
-                                if k[:4] != 'conf' and k[:3] != 'log'))
-
-
-def _get_roots(config, nx_version, key):
-    """Get root directories.
-
-    Args:
-        config (dict) : configuration
-        nx_version (str) : NX version
-        key (str) : 'remote' or 'local'
-
-    Returns:
-        tuple : (Root build directory, Root patches directory)
-    """
-    build = config[key]['build'][nx_version]
+def get_patch_loc(config, nx_version, key):
+    d = config[key]['patch']
     try:
-        patch = config[key]['patch'][nx_version]
+        return d[nx_version]
     except KeyError:
-            patch = config[key]['patch'][nx_version[:4]]
+        try:
+            return d[nx_version[:4]]
+        except KeyError:
+            raise ConfigError("%s patch directory not found for %s."
+                    % (key, nx_version))
 
-    return build, patch
+def get_build_loc(config, nx_version, key):
+    d = config[key]['build']
+    try:
+        return d[nx_version]
+    except KeyError:
+        raise ConfigError("%s build directory not found for %s."
+                % (key, nx_version))
 
 
-def get_remote_roots(config, nx_version):
-    return _get_roots(config, nx_version, 'remote')
-
-
-def get_local_roots(config, nx_version):
-    return _get_roots(config, nx_version, 'local')
+def is_frozen_build(nx_version, config):
+    logger = logging.getLogger(__name__)
+    if nx_version not in config['remote']['build']:
+        logger.debug("No remote found for this version.")
+        return True
+    if utils.is_exe(config['local']['build'][nx_version]):
+        logger.debug("Frozen build: executable")
+        return True
+    return False

@@ -1,8 +1,3 @@
-"""
-
-This command is required by nx_launch
-"""
-
 import click
 import logging
 import os
