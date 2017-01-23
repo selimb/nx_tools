@@ -114,7 +114,7 @@ def cli(config, nx_version, latest, vanilla, env_var, name, cwd, nxbin):
 
     # Get Patch and set TMG
     if vanilla:
-        chosen_patch = ""
+        patch = ""
         set_tmg_var("")
     elif env_var:
         chosen_patch = os.environ['UGII_TMG_DIR']
@@ -122,9 +122,9 @@ def cli(config, nx_version, latest, vanilla, env_var, name, cwd, nxbin):
     else:
         patches_list = _list.list_directories(patch_root)
         if latest:
-            chosen_patch = patches_list[0]
+            patch = patches_list[0]
         else:
-            chosen_patch = query(patches_list, "Pick a patch:")
+            patch = query(patches_list, "Pick a patch:")
         tmg_dir = os.path.join(chosen_patch, 'tmg')
         set_tmg_var(tmg_dir)
 
