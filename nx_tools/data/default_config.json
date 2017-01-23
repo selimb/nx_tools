@@ -5,7 +5,7 @@
         "build": {
             "nx12":"D:\\NX\\NX12\\builds",
             "nx11": "D:\\NX\\NX11\\builds",
-            "nx1003": "D:\\NX\\NX10\\builds\\1003",
+            "nx1003": "Y:\\NX1003\\UGII\\ugraf.exe",
             "nx1002": "Y:\\NX1002\\UGII\\ugraf.exe",
             "nx1001": "Y:\\NX1001\\UGII\\ugraf.exe",
             "nx1000": "Y:\\NX100\\UGII\\ugraf.exe",
@@ -21,8 +21,7 @@
     "remote": {
         "build":{
             "nx12":"T:\\luc\\NX\\NX1200\\Group_Kits",
-            "nx11":"T:\\luc\\NX\\NX1100_PhaseKits",
-            "nx1003":"T:\\luc\\NX\\NX1003GroupKits"
+            "nx11":"T:\\luc\\NX\\NX1102"
         },
         "patch":{
             "nx12":"downloads/patches/nx/nx12",

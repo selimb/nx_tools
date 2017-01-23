@@ -1,5 +1,13 @@
 # Ch-ch-ch-ch-changes
 
+## 1.1.11
+
+- Update default configuration. 
+
+## 1.1.10
+
+- In the `list` command, show the date modified of the kits folder as opposed to the zip file. 
+
 ## 1.1.8
 
 - Fix [#18](https://github.com/beselim/nx_tools/issues/18).
