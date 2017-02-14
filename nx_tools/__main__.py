@@ -56,7 +56,6 @@ def nx_tools_utils(ctx, verbose):
 
 @click.command('nx_tools', cls=NamedGroup,
                context_settings=CONTEXT_SETTINGS)
-@click.option('-g', '--gui', is_flag=True, help='Launch GUI')
 @click.option('-v', '--verbose', is_flag=True,
               help='Enables verbose mode.')
 @click.option('--no-update', is_flag=True,
@@ -69,9 +68,6 @@ def nx_tools(ctx, gui, verbose, no_update):
     logger.debug(ctx.args)
     if not no_update:
         update()
-
-    if gui:
-        raise NotImplementedError
 
 
 nx_tools.add_command(cli.add_task)
