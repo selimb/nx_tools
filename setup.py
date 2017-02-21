@@ -16,8 +16,12 @@ def get_version():
         ))
     return version
 
+def get_requirements():
+    return open('requirements.txt').readlines()
+
 
 version = get_version()
+requirements = get_requirements()
 name = 'nx_tools'
 
 ahk2exe = r"C:\Program Files (x86)\AutoHotkey\Compiler\Ahk2Exe.exe"
@@ -66,10 +70,7 @@ setup(
     },
     scripts=ahk_exe,
     include_package_data=True,
-    install_requires=[
-        'click==5.1',
-        'pyreadline==2.0'
-    ],
+    install_requires=requirements
     cmdclass={
         'bdist_egg': CustomEgg,
     },

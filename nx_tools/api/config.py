@@ -1,153 +1,142 @@
-"""
-Functions for configuring paths and executable.
-Contains defaults.
-"""
-from __future__ import print_function
-
-import click
 import json
 import logging
 import shutil
 import subprocess
 
-from .._click import NamedGroupNoArgs
-from ..constants import DEFAULT_CONFIG_PATH, USER_CONFIG_PATH, NPP
-from ..exceptions import UserConfigNotFound
-from .. import utils
-
-BACKUP_EXT = '.bak'
+from .constants import DEFAULT_CONFIG_PATH, USER_CONFIG_PATH, NPP
+from .exceptions import UserConfigNotFound
+from . import utils
 
 
-@click.command('config', cls=NamedGroupNoArgs,
-               short_help='Configuration manipulation.')
-def cli():
-    pass
+logger = logging.getLogger(__name__)
+
+_BACKUP_EXT = '.bak'
+_TMG_KEY = 'tmg'
+_NX_KEY = 'nx'
 
 
-@cli.command('update',
-             short_help="Fill empty user configuration values with defaults.")
-def update():
-    defaults = utils.read_default_config()
+def read_config():
+    return Config(_read_config())
+
+
+class Config(object):
+    '''Simple wrapper around a dictionary'''
+    def __init__(self, dct):
+        self._conf = dct
+
+    def get(self, key):
+        try:
+            return self._conf[key]
+        except KeyError:
+            raise AssertionError('Configuration has no %s entry' % key)
+
+    def local_TMG_dir(self, nx_version):
+        raise NotImplementedError
+
+    def remote_TMG_dir(self, nx_version):
+        raise NotImplementedError
+
+    def local_NX_dir(self, nx_version):
+        raise NotImplementedError
+
+    def remote_NX_dir(self, nx_version):
+        raise NotImplementedError
+
+    def _local_dir(self, item_type, nx_version):
+        raise NotImplementedError
+
+    def _fuzzy_version(nx_version, available):
+        '''Matches `nx_version` given pool of `available` versions.
+
+        For example, if `nx_version` is "nx1003" and "nx10" is available,
+        "nx10" is returned.
+        '''
+        if nx_version in available:
+            return nx_version
+
+        matches = []
+        for v in available:
+            n = len(v)
+            if v == nx_version[:v]:
+                matches.append(v)
+
+        if not matches:
+            msg = 'No match for %s in %s' % (nx_version, available)
+            raise UserConfigInvalid(msg)
+
+        if len(matches) > 1:
+            raise UserConfigInvalid(
+                'Ambiguous. Found %i matches for %s in %s: %s'
+                % (len(matches), nx_version, available, matches)
+            )
+
+        return matches[0]
+
+    def _tracked_tmg(self):
+        raise NotImplementedError
+
+    def _tracked_nx(self):
+        raise NotImplementedError
+
+
+def _read_config():
+    default = read_default_config()
     try:
-        user = utils.read_user_config()
-    except UserConfigNotFound:
+        user = read_user_config()
+        logger.debug('User config:\n' + pformat(user))
+    except UserConfigNotFound as e:
         user = {}
-    utils.recursive_dict_update(defaults, user)
-    utils.write_json(defaults, USER_CONFIG_PATH)
-    print("User configuration updated.")
+        logger.debug(e.message)
+    conf = recursive_dict_update(default, user)
+    logger.debug('Result config:\n' + pformat(config))
+    return conf
 
 
-@cli.command('reset',
-             short_help="Completely reset user configuration to defaults.")
-def reset():
-    shutil.copyfile(DEFAULT_CONFIG_PATH, USER_CONFIG_PATH)
-    print("Default configuration written to %s" % USER_CONFIG_PATH)
-
-
-@cli.command('init',
-             short_help="Interactively initialize user configuration.")
-def init():
-    from .. import readline
-    import glob
-    def pause():
-        click.prompt('Press [Enter] to proceed', default='',
-                     show_default=False)
-    def prompt(text, build_or_patch):
-        return click.prompt(
-                text.upper(), value_proc=utils.ensure_dir_exists,
-                default=config['local'][build_or_patch][text.lower()]
-                )
-    def complete(text, state):
-        return (glob.glob(text+'*')+[None])[state]
-    readline.set_completer_delims(' \t\n;')
-    readline.parse_and_bind("tab: complete")
-    readline.set_completer(complete)
-
-    config = utils.read_config()
-    user = config.copy()
-    del user['remote']
-    del user['7z_exe']
-    header = "NX Tools"
-    print('')
-    print(header)
-    print('=' * len(header))
-    print("Pressing enter accepts defaults.")
-    print("It's ok to input a non-existing directory --"
-          " they will be created for you.")
-    print("Auto-completion for paths is enabled -- use backslashes.")
-    pause()
-
-    print('')
-    print("Let's setup your local NX build locations.")
-    print("The directory you input should/will contain various NX builds"
-          ", which themselves contain a 'kits' folder.")
-    print('')
-    k = 'build'
-    for version in ('nx11', 'nx1003'):
-        ans = prompt(version, k)
-        user['local'][k][version] = ans
-    print("It is not necessary to configure frozen builds"
-          " such as NX1001!")
-    print("The Launcher detects frozen builds"
-          " when the location is an executable.")
-
-    pause()
-
-    print('')
-    print("Let's setup your TMG patches locations.")
-    print("The directory you input should contain various patches"
-          ", which themselves contain a 'tmg' folder.")
-    k = 'patch'
-    for version in ('nx11', 'nx10', 'nx9'):
-        ans = prompt(version, k)
-        user['local'][k][version] = ans
-
-    print('')
-
-    print("Finally, let's configure the Identifier.")
-    k = 'identifier_hotkey'
-    hotkey = click.prompt('Identifier Hotkey',
-                          default=config[k])
-    user[k] = hotkey
-    print('')
-
-    print('Configuration Completed.')
-    print('You can edit your configuration at any time by running:')
-    print('$ nx_tools config edit')
-    utils.write_json(user, USER_CONFIG_PATH)
-
-
-@cli.command('edit', short_help="Edit configuration.")
-def edit():
-    logger = logging.getLogger(__name__)
-    filename = USER_CONFIG_PATH
-    backup = filename + BACKUP_EXT
-    logger.debug('Backing up %s at %s' % (filename, backup))
-    shutil.copy(filename, backup)
-    editor = NPP
-    print('Opening %s with %s.' % (filename, editor))
-    subprocess.Popen([editor, filename], shell=True)
-
-
-@cli.command('revert', short_help='Undo last edit')
-def revert():
-    logger = logging.getLogger(__name__)
-    filename = USER_CONFIG_PATH
-    backup = filename + BACKUP_EXT
-    logger.debug('Copying %s to %s' % (backup, filename))
+def _read_default_config():
     try:
-        shutil.copy(backup, filename)
-    except IOError as e:
-        if e.errno == 2:
-            print("Could not find backup file.")
-            print("Possible you didn't use 'nx_tools config edit'?")
-            return
+        return load_json(DEFAULT_CONFIG_PATH)
+    except IOError:
+        msg = 'Could not find default config at %s ' % DEFAULT_CONFIG_PATH
+        raise AssertionError(msg)
+
+
+def _read_user_config():
+    try:
+        return load_json(USER_CONFIG_PATH)
+    except IOError:
+        msg = 'Could not find user config at %s ' % USER_CONFIG_PATH
+        raise UserConfigNotFound(msg)
+    except ValueError as e:
+        raise UserConfigInvalid('User config not a valid JSON object\n' + e.message)
+
+
+def _split_duplicates(location_dict):
+    r = {}
+    sep = ','
+    for key in location_dict:
+        val = location_dict[key]
+        if not sep in key:
+            r[key] = val
+        # new_keys = key.split(sep)
+
+def _recursive_dict_update(d, u):
+    '''Recursively update `d` from `u`.'''
+    for k, v in u.iteritems():
+        if isinstance(v, collections.Mapping):
+            r = recursive_dict_update(d.get(k, {}), v)
+            d[k] = r
         else:
-            print(e)
-            return
+            d[k] = u[k]
+    return d
 
 
-@cli.command('list', short_help='List all variables in configuration.')
-def list():
-    config = utils.read_config()
-    print(json.dumps(config, indent=4, separators=(',', ': '), sort_keys=True))
+def _load_json(filepath):
+    s = open(filepath).read().replace('\\', '\\\\')
+    return json.loads(s)
+
+
+def _write_json(obj, filepath):
+    utils.ensure_dir_exists(os.path.dirname(filepath))
+    with open(filepath, 'w') as f:
+        json.dump(obj, f, separators=(',', ':'), indent=4)
+

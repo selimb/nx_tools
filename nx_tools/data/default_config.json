@@ -1,35 +1,41 @@
 {
-    "7z_exe": "C:\\Program Files\\7-Zip\\7zG.exe",
+    //
+    // Required
+    //
+    // Path to 7-zip executable
+    "7z_exe": "C:\Program Files\7-Zip\7zG.exe",
+    // Hotkey used to identify NX process (requires identifier to be running)
     "identifier_hotkey": "F9",
-    "local": {
-        "build": {
-            "nx12":"D:\\NX\\NX12\\builds",
-            "nx11": "D:\\NX\\NX11\\builds",
-            "nx1003": "D:\\NX\\NX10\\builds\\1003",
-            "nx1002": "Y:\\NX1002\\UGII\\ugraf.exe",
-            "nx1001": "Y:\\NX1001\\UGII\\ugraf.exe",
-            "nx1000": "Y:\\NX100\\UGII\\ugraf.exe",
-            "nx9": "Y:\\NX903\\UGII\\ugraf.exe"
-        },
-        "patch": {
-            "nx12":"D:\\NX\\NX12\\patches",
-            "nx11": "D:\\NX\\NX11\\patches",
-            "nx10": "D:\\NX\\NX10\\patches",
-            "nx9": "D:\\NX\\NX9\\patches"
-        }
-    },
-    "remote": {
-        "build":{
-            "nx12":"T:\\luc\\NX\\NX1200\\Group_Kits",
-            "nx11":"T:\\luc\\NX\\NX1100_PhaseKits",
-            "nx1003":"T:\\luc\\NX\\NX1003GroupKits"
-        },
-        "patch":{
-            "nx12":"downloads/patches/nx/nx12",
-            "nx11":"downloads/patches/nx/nx11",
-            "nx10":"downloads/patches/nx/nx10"
-        }
-    },
+    // Default option for NX startup directory with the "nx launch" command
     "start_in": null,
-    "delete_zip": false
+    // Delete archive after fetching new item with the "nx update" command
+    "delete_zip": false,
+    //
+    // Remote (source) and local (target) locations of builds/patches
+    //
+    // Helper variables (must be uppercase)
+    "HOME": "D:\NX",
+    "LUC": "T:\luc\NX",
+    "UGRAF": "UGII\ugraf.exe",
+    // Builds
+    "nx": {
+        "target_rule": "{HOME}\{version}\builds",
+        "nx12": ["{LUC}\NX1200\Group_Kits"],
+        "nx11": ["{LUC}\NX1100_PhaseKits"],
+        "nx1003": ["{LUC}\NX1003GroupKits"],
+        "nx1002": ["Y:\NX1002\{UGRAF}"],
+        "nx1001": ["Y:\NX1001\{UGRAF}"],
+        "nx10,nx1000": ["Y:\NX100\{UGRAF}"],
+        "nx9": ["Y:\NX903\{UGRAF}"]
+    }
+    // Patches
+    "tmg": {
+        "target_rule": "{HOME}\{version}\patches",
+        "nx12": ["downloads/patches/nx/nx12"],
+        "nx11": ["downloads/patches/nx/nx11"],
+        "nx10": ["downloads/patches/nx/nx10"],
+        "nx9": ["downloads/patches/nx/nx9"],
+        "dev": [null, "{HOME}\dev"],
+        "work": [null, null]
+    },
 }

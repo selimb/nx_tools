@@ -2,7 +2,7 @@ class NXToolsError(Exception):
     pass
 
 
-class ConfigError(NXToolsError):
+class UserConfigInvalid(NXToolsError):
     pass
 
 

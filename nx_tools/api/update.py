@@ -5,25 +5,24 @@ import collections
 import ftplib
 import glob
 import logging
-from multiprocessing.dummy import ThreadPool as Pool
+from multiprocessing.dummy import Pool as ThreadPool
 import os
 import shutil
-import subprocess
+from subprocess import Popen, PIPE
 import sys
 
-from .. import utils
-from ..exceptions import *
+from . import utils
+from .exceptions import *
 
 logger = logging.getLogger(__name__)
 
 _MAX_WORKERS = 3
 
 Task = collections.namedtuple('Task', ('func', 'args'))
-TASK_FAIL = 1
+TaskResult = collections.namedtuple('TaskResult', ('stat', 'reason'))
 TASK_SUCCESS = 0
-TaskResult = collections.namedTuple('TaskResult', ('stat', 'reason'))
-
-successful_task = TaskResult(stat=TASK_SUCCESS, reason=None)
+TASK_FAIL = 1
+TASK_ASSERT = -1
 
 
 def submit_tasks(tasks):
@@ -31,119 +30,167 @@ def submit_tasks(tasks):
     return pool.imap_unordered(run_task, tasks)
 
 
-def run_task(task):
-    func = task.func
-    args = task.args
-    return func(*args)
+class _Task(object):
+    def __init__(self, local_dir, remote_dir, item, delete_zip):
+        self._local_dir = local_dir
+        self._remote_dir = remote_dir
+        self._item = item
+        self._delete_zip = delete_zip
 
+    def run(self):
+        stat = TASK_SUCCESS
+        reason = None
+        try:
+            dest_zip = os.path.join(self._local_dir, self._item)
+            logger.debug('Fetching %s to %s.' % (self._item, dest_zip))
+            self._fetch(dest_zip)
+            logger.debug('Fetch to %s complete.' % dest_zip)
+            logger.debug('Extracting: '  + dest_zip)
+            _extract(dest_zip)
+            if self._delete_zip:
+                logger.debug('Deleting archive: ' + dest_zip)
+                os.remove(dest_zip)
+        except Exception as e:
+            stat = TASK_FAIL
+            reason = e.message
+            if not type(e) == NXToolsError:
+                msg = 'Task encountered non-NXToolsError exception.\n%s' % self
+                logger.error(msg)
+                logger.error(e, exc_info=True)
+                reason = 'UNEXPECTED ASSERT. CHECK LOG'
+
+        return TaskResult(stat, reason)
+
+    def __str__(self):
+        s =  'Local: %s - ' % self._local_dir
+        s += 'Remote: %s - ' % self._remote_dir
+        s += 'Item: %s' % self._item
+        return s
+
+    def _fetch(self, dest_zip):
+        raise NotImplementedError
+
+
+class TMGTask(_Task):
+    def _fetch(self, dest_zip):
+        ftp = TMGUpdater._ftp_connect(self._local_dir)
+        try:
+            with open(dest_zip, 'wb') as fh:
+                ftp.retrbinary('RETR ' + self._item, fh.write)
+        except IOError as e:
+            msg = 'Could not write to %s.\n%s' % (dest_zip, e.message)
+            raise NXToolsError(msg)
+        finally:
+            ftp.close()
+
+
+class NXTask(_Task):
+    def _fetch(self, dest_zip):
+        src = os.path.join(self._local_dir, self._item)
+        try:
+            shutil.copy(src, dest_zip)
+        except IOError as e:
+            raise NXToolsError('Could not copy %s to %s' % self._item, dest_zip)
 
 class _Updater(object):
-    '''Abstract Updater'''
 
     items_key = None
+    task_cls = None
 
     @classmethod
     def from_config(cls, config, nx_version):
-        assert(items_key is not None)
+        assert items_key is not None
+        assert task_cls is not None
         local = config.get_local(items_key, nx_version)
         remote = config.get_remote(items_key, nx_version)
-        delete_zip = config.delete_zip
+        dz = config.get('delete_zip')
         return cls(
             local_dir=local,
             remote_dir=remote,
-            delete_zip=delete_zip
+            delete_zip=dz,
         )
 
     def __init__(self, local_dir, remote_dir, delete_zip):
-        self.local_dir = local_dir
-        self.remote_dir = remote_dir
-        self.delete_zip = delete_zip
-        self.new_items = []
+        self._local_dir = local_dir
+        self._remote_dir = remote_dir
+        self._dz = delete_zip
+        self._new_items = []
 
     def list_new(self):
         items = self._list_items()
-        logger.debug('Found items:\n%s' % '\n'.join(items))
-        self.new_items = [i for i in items if is_new(i, self.local_dir)]
-        return self.new_items
+        logger.debug('Found items:\n' + '\n'.join(items))
+        self._new_items = [it for it in items if self._is_new(it)]
+        return self._new_items
 
     def make_tasks(self, ids):
-        if not self.new_items:
+        if not self._new_items:
             return []
 
-        num_items = len(self.new_items)
+        utils.ensure_dir_exists(self._local_dir)
+        num_items = len(self._new_items)
         invalid_ids = [i for i, n in enumerate(ids) if n < 0 or n >= num_items]
         if invalid_ids:
             raise NXToolsError('Invalid IDs for tasks: ' + ', '.join(invalid_ids))
-        return [_make_task(i) for i in ids]
+
+        ld = self._local_dir
+        rd = self._remote_dir
+        dz = self._dz
+        tasks = [
+            self.task_cls(ld, rd, self._new_items[i], dz)
+            for i in ids
+        ]
 
     def _is_new(self, f):
-        r = is_new(f, self.local_dir)
+        r = is_new(f, self._local_dir)
         logger.debug('Item %s is new? %r' % (f, r))
         return r
 
     def _list_items(self):
         raise NotImplementedError
 
-    def _make_task(self, i):
-        raise NotImplementedError
-
-    @staticmethod
-    def task_func():
-        raise NotImplementedError
-
 
 class NXUpdater(_Updater):
 
     items_key = 'nx'
+    task_cls = NXTask
 
-    def check_new(self):
+    def _list_files(d):
+        return [f for f in os.listdir(d) if os.path.isfile(os.path.join(d, f))]
 
-    def make_tasks(self):
+    def _list_items(self):
+        if not os.path.exists(self._remote_dir):
+            msg = 'NX remote directory does not exist: ' + self._remote_dir
+            raise NXToolsError(msg)
+
+        files = _list_files(self._remote_dir)
+        logger.debug(
+            'NX Remote %s contains:\n%s'
+            % (self._remote_dir, '\n'.join(files))
+        )
+        matches = [f for f in files if os.path.splitext(f)[1] == '.7z']
+        return matches
 
 
 class TMGUpdater(_Updater):
 
     items_key = 'tmg'
+    task_cls = TMGTask
 
     def _list_items(self):
-        logger.debug('Checking for %s TMG patch on FTP server at: %s'
-            % (self.nx_version.upper(), self.remote_dir))
-        ftp = TMGUpdater._connect()
-        listings = []
-        ftp.retrlines('LIST', listings.append)
+        ftp = self._connect(self._local_dir)
+        fnames = ftp.nlst()
         ftp.close()
-        fnames = TMGUpdater._parse_listings(listings)
-        logger.debug('FTP Listing: %s', '\n'.join(names))
+        logger.debug('FTP Listing: %s\n' + '\n'.join(names))
 
-        return [f for f in fnames if TMGUpdater._is_windows_item(f)]
-
-    def _make_task(self, i):
-        def task():
-            r = {'stat': 0, 'reason': None}
-            zip_file = self.new_items[i]
-            dest_zip = os.path.join(self.local_dir, os.path.basename(zip_file))
-            ftp = self._connect()
-            try:
-                with open(dest_zip, 'wb') as fh:
-                    ftp.retrbinary('RETR ' + zip_file, fh.write)
-            except IOError as e:
-                r['stat'] = 1
-                r['reason'] = 'Error occured during FTP transfer.\n%s' % str(e)
-                return r
-
-            ftp.close()
+        return [f for f in fnames if self._is_windows_item(f)]
 
     @staticmethod
-    def _is_windows_item(fnames):
+    def _is_windows_item(fname):
         return 'wntx64' in fname or 'win64' in fname
 
     @staticmethod
-    def _parse_listings(listings)
-        fnames = [l.split(None, 8)[-1].lstrip() for l in listings]
-        return fnames
-
-    @staticmethod
     def _ftp_connect(pathname):
+        logger.debug('Creating FTP connection in directory: ' + pathname)
         try:
             ftp = ftplib.FTP('ftp')
             ftp.login()
@@ -154,176 +201,29 @@ class TMGUpdater(_Updater):
 
         return ftp
 
-    def make_task(self, i):
+
+def is_new(f, target_dir):
+    filename = utils.get_filename(f)
+    if os.path.isdir(os.path.join(target_dir, filename)):
+        return False
+    return True
 
 
-
-def get_process_output(process):
-    errmsg, _ = process.communicate()
-    errmsg = errmsg.decode('utf-8')
-    return errmsg
-
-
-def _extract(archive_filepath, exe):
-    '''Extracts archive file to folder in same directory.'''
-    if not os.path.exists(archive_filepath):
-        raise NXToolsError('Archive does not exist')
-    output_dir = os.path.join(os.path.dirname(archive_filepath),
-                              get_filename(archive_filepath))
-    command = [exe, 'x', archive_filepath, '-o' + output_dir]
-    logger.debug('Extracting: ' + ' '.join(command))
+def _extract(zip_path):
+    exe_7z = 'C:\\Program Files\\7-Zip\\7zG.exe'
+    if not os.path.exists(zip_path):
+        raise NXToolsError('Archive does not exist: %s' % zip_path)
+    output_dir = os.path.splitext(zip_path)
+    command = [exe_7z, 'x', zip_path, '-o' + output_dir]
+    logger.debug('Extract command: ' + ' '.join(command))
     try:
-        p = subprocess.Popen(command, stdout=subprocess.PIPE,
-                             stderr=subprocess.PIPE)
+        p = Popen(command, stdout=PIPE, stderr=PIPE)
     except WindowsError:
-        logger.error('Could not run ' + exe)
-        raise NXToolsError
+        raise NXToolsError('Could not find 7-Zip at %s.' % exe_7z)
     p.wait()
     if p.returncode != 0:
-        process_output = get_process_output(process=p)
-        logger.error('Could not extract successfully.' + process_output)
-        raise NXToolsError
+        out, _ = process.communicate()
+        errmsg = out.decode('utf-8')
+        raise NXToolsError('Could not extract successfully.\n' + errmsg)
     logger.debug('File successfully extracted to: ' + output_dir)
-
-
-def get_filename(filepath):
-    basename = os.path.basename(filepath)
-    filename, ext = os.path.splitext(basename)
-    return filename
-
-
-def delete_file(filepath):
-    logger.debug('Deleting file: ' + filepath)
-    os.remove(filepath)
-
-
-
-
-class _Updater(object):
-
-    item_name = None
-    item_name_plural = None
-
-    def __init__(self, nx_version, config, source_key):
-        self.nx_version = nx_version.lower()
-        try:
-            self.remote_dir = config['remote'][source_key][nx_version]
-            self.local_dir = config['local'][source_key][nx_version]
-        except KeyError:
-            raise ConfigError('Incomplete configuration for %s %s.'
-                    % (nx_version, self.item_name_plural))
-        # TODO don't need these to be class attributes
-        self.do_delete_zip = config['delete_zip']
-        self.zip_exe = config['7z_exe']
-        utils.ensure_dir_exists(self.local_dir)
-
-    def _is_new(self, f):
-        return is_new(f, self.local_dir)
-
-    def check_new(self):
-        raise NotImplementedError
-
-    def _transfer(self):
-        raise NotImplementedError
-
-    def fetch(self, item):
-        dest_zip = os.path.join(self.local_dir, os.path.basename(item))
-        try:
-            self._transfer(item, dest_zip)
-            extract(dest_zip, exe=self.zip_exe)
-            if self.delete_zip == True:
-                delete_file(dest_zip)
-        except NXToolsError:
-            logger.error(NXToolsError)
-
-
-class _TMGUpdater(_Updater):
-    item_name = 'patch'
-    item_name_plural = 'patches'
-
-    def __init__(self, nx_version, config):
-        super(_TMGUpdater, self).__init__(nx_version, config, 'patch')
-        _connect()
-
-    def _connect(self):
-        ftp = ftplib.FTP('ftp')
-        ftp.login()
-        ftp.cwd(self.remote_dir)
-        self.ftp = ftp
-
-    def check_new(self):
-        def is_windows(filename):
-            return 'wntx64' in filename or 'win64' in filename
-        logger.debug('Checking for %s patch on FTP server at: %s'
-                % (self.nx_version.upper(), self.remote_dir))
-        listings = []
-        self.ftp.retrlines('LIST', listings.append)
-        found = []
-        names = [l.split(None, 8)[-1].lstrip() for l in listings]
-        logger.debug('FTP Listing: %s', '\n'.join(names))
-        windows_patches = [n for n in names if is_windows(n)]
-        return [p for p in windows_patches if self._is_new(p)]
-
-    def _transfer(self, ftp_file, dest_file):
-        try:
-            with open(dest_file, 'wb') as fh:
-                self.ftp.retrbinary('RETR ' + ftp_file, fh.write)
-        except IOError as e:
-            raise NXToolsError('Error occured during transfer.\n%s' % e)
-
-
-class _BuildUpdater(_Updater):
-    item_name = 'build'
-    item_name_plural = 'builds'
-
-    def __init__(self, nx_version, config):
-        super(_BuildUpdater, self).__init__(nx_version, config, 'build')
-
-    def check_new(self):
-        logger.debug('Checking for %s build in Luc\'s T drive: %s'
-                % (self.nx_version.upper(), self.remote_dir))
-        if not os.path.exists(self.remote_dir):
-            logger.error('Can't find remote directory: %s' % self.remote_dir)
-            return []
-
-        builds = list(glob.glob(os.path.join(self.remote_dir, '*.7z')))
-        logger.debug('Builds: \n%s' % '\n'.join(builds))
-        return [build for build in builds if self._is_new(build)]
-
-    def _transfer(self, src, dest):
-        logger.debug('Copying: %s\nto: %s' % (src, dest))
-        try:
-            shutil.copy(src, dest)
-        except IOError as e:
-            raise NXToolsError('Could not copy.\n%s' % e)
-
-
-@click.command('check', short_help='Used internally by the Task Scheduler.')
-@click.argument('nx_version', nargs=1)
-@click.pass_obj
-def check_cli(config, nx_version):
-    '''
-    Return Codes:
-        200 : Nothing new
-        201 : New Build
-        202 : New Patch
-        203 : Both New Build and New Patch
-    '''
-    new_build = False
-    new_patch = False
-    if not is_frozen_build(nx_version, config):
-        new_build = check_build(nx_version, config)
-    new_patch = check_TMG(nx_version, config)
-    if new_build and new_patch:
-        print('New Build and Patch Available.')
-        sys.exit(203)
-    if new_build:
-        print('New Build Available.')
-        sys.exit(201)
-    if new_patch:
-        print('New Patch Available.')
-        sys.exit(202)
-    print('Nothing New')
-    sys.exit(200)
-
 

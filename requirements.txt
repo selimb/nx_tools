@@ -1,0 +1,2 @@
+click==5.1
+pyreadline==2.0
