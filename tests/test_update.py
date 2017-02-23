@@ -31,10 +31,15 @@ class DummyUpdater(nxup._Updater):
         return self._dummy_items
 
 
+@pytest.fixture(scope='function')
+def dumdir(tmpdir):
+    return str(tmpdir.mkdir('temp'))
+
 
 @pytest.fixture(scope='function')
 def temp_zip(tmpdir):
-    tmp = tmpdir.mkdir('test_zip').realpath()
+    tmp = tmpdir.mkdir('test_zip')
+    tmp = str(tmp)
     td = os.path.join(tmp, 'testdir')
     os.mkdir(td)
     open(os.path.join(td, 'hello.txt'), 'w').write('content')
@@ -97,14 +102,14 @@ def test_is_new(tmpdir):
     name = 'nx11_0123'
     d = tmpdir.mkdir('is_new')
     d.join(name + '.zip')
-    up = DummyUpdater(local_dir=d.realpath())
+    up = DummyUpdater(local_dir=str(d))
     assert up._is_new(name)
     d.mkdir(name)
     assert not up._is_new(name)
 
 def test_list_new(tmpdir):
     d = tmpdir.mkdir('list_new')
-    up = DummyUpdater(local_dir=d.realpath())
+    up = DummyUpdater(local_dir=str(d))
     assert up.list_new() == []
     items = ['first', 'second', 'third']
     up.set_dummy_items(items)
@@ -113,12 +118,23 @@ def test_list_new(tmpdir):
     d.mkdir('third')
     assert up.list_new() == ['second']
 
-def test_make_tasks_before_list():
-    up = DummyUpdater()
+def test_make_task_ids(dumdir):
+    ids = [5, 10, 2]
+
+    up = nxup.TMGUpdater
+    expected = ['TMGUpdater-%i' % i for i, _ in enumerate(ids)]
+    assert up._mk_task_ids(ids) == expected
+
+    up = nxup.NXUpdater
+    expected = ['NXUpdater-%i' % i for i, _ in enumerate(ids)]
+    assert up._mk_task_ids(ids) == expected
+
+def test_make_tasks_before_list(dumdir):
+    up = DummyUpdater(local_dir=dumdir)
     assert up.make_tasks([0, 1]) == []
 
-def test_make_tasks_invalid_ids():
-    up = DummyUpdater()
+def test_make_tasks_invalid_ids(dumdir):
+    up = DummyUpdater(dumdir)
     up._new_items = ['a', 'b', 'c']
     ids = [-1, 0]
     with pytest.raises(NXToolsError):
@@ -128,15 +144,20 @@ def test_make_tasks_invalid_ids():
     with pytest.raises(NXToolsError):
         up.make_tasks(ids)
 
+def test_make_tasks_no_ids(dumdir):
+    up = DummyUpdater(dumdir)
+    up._new_items = ['a', 'b']
+    assert up.make_tasks([]) == []
+
 def test_make_tasks_local_dir_does_not_exist(tmpdir):
-    local_dir = os.path.join(tmpdir.realpath(), 'local_dir')
+    local_dir = os.path.join(str(tmpdir), 'local_dir')
     up = DummyUpdater(local_dir=local_dir)
     up._new_items = ['a', 'b']
     up.make_tasks([0, 1])
     assert os.path.exists(local_dir)
 
-def test_make_tasks(tmpdir):
-    kwargs = dict(local_dir=tmpdir.realpath(), remote_dir='remote', delete_zip=True)
+def test_make_tasks(dumdir):
+    kwargs = dict(local_dir=dumdir, remote_dir='remote', delete_zip=True)
     up = DummyUpdater(**kwargs)
     new_items = [5, 6, 7]
     up._new_items = new_items
@@ -154,9 +175,9 @@ def test_make_tasks(tmpdir):
 
     assert_all(test_type)
     for kw, datum in kwargs.items():
-        assert_all(test_kwargs(kw, datum))
+        assert_all(test_kwarg(kw, datum))
     assert_all(test_item)
 
-def test_dummy_task(tmpdir):
+def test_empty_task_runs(dumdir):
     raise NotImplementedError
 

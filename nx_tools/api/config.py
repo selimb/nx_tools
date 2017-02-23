@@ -4,15 +4,15 @@ import shutil
 import subprocess
 
 from .constants import DEFAULT_CONFIG_PATH, USER_CONFIG_PATH, NPP
-from .exceptions import UserConfigNotFound
+from .exceptions import UserConfigNotFound, UserConfigInvalid
 from . import utils
 
 
 logger = logging.getLogger(__name__)
 
 _BACKUP_EXT = '.bak'
-_TMG_KEY = 'tmg'
-_NX_KEY = 'nx'
+TMG_KEY = 'tmg'
+NX_KEY = 'nx'
 
 
 def read_config():
@@ -111,13 +111,22 @@ def _read_user_config():
 
 
 def _split_duplicates(location_dict):
+    err_msg = 'Multiple definitions for %s.'
     r = {}
     sep = ','
     for key in location_dict:
         val = location_dict[key]
         if not sep in key:
+            if key in r:
+                raise UserConfigInvalid(err_msg % key)
             r[key] = val
-        # new_keys = key.split(sep)
+            continue
+        new_keys = key.split(sep)
+        for new_key in new_keys:
+            if new_key in r:
+                raise UserConfigInvalid(err_msg % key)
+            r[new_key] = val
+    return r
 
 def _recursive_dict_update(d, u):
     '''Recursively update `d` from `u`.'''
