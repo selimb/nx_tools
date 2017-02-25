@@ -41,7 +41,7 @@ The updater can be run like this:
 ```bash
 nx_tools update nx11
 ```
-If a new patch and/or build is available, it will be downloaded and extracted. 
+If a new patch and/or build is available, it will be downloaded and extracted.
 
 #### Launcher
 The launcher is run like so:
@@ -57,15 +57,15 @@ Should you wish to launch NX with the current `UGII_TMG_DIR` or with NX's intern
 *New in 1.1.4*: Launch NX with a `--name` to tag the process. This shows up in the [Identifier](#identifier) as the window title.
 
 #### Identifier
-The Identifier allows you to query the Build and Patch for active NX processes with the use of a user-defined hotkey -- *F9* by default -- provided NX was launched with the *NX Tools* Launcher. The hotkey can be defined in the configuration file. 
+The Identifier allows you to query the Build and Patch for active NX processes with the use of a user-defined hotkey -- *F9* by default -- provided NX was launched with the *NX Tools* Launcher. The hotkey can be defined in the configuration file.
 
-If NX is the active window when the hotkey is pressed, build/patch data is only given for said active window. Otherwise, the Identifier will cycle through the build/patch data for all active NX processes. You can use <Tab> or the user-defined shortcut to keep cycling through, or <Escape> to stop. 
+If NX is the active window when the hotkey is pressed, build/patch data is only given for said active window. Otherwise, the Identifier will cycle through the build/patch data for all active NX processes. You can use <Tab> or the user-defined shortcut to keep cycling through, or <Escape> to stop.
 
 The identification feature is accessed through an [AutoHotkey](http://www.autohotkey.com/) executable (no installation required). The Identifier can be launched with:
 ```
 nx_tools identifier
 ```
-It will stay active in the tray (notification area) and enable the hotkey as long as it is active, i.e. you do not need to run it everytime you want to use the hotkey. 
+It will stay active in the tray (notification area) and enable the hotkey as long as it is active, i.e. you do not need to run it everytime you want to use the hotkey.
 
 #### Task Scheduler
 
@@ -73,7 +73,7 @@ You can import the task into Windows' Task Scheduler by invoking:
 ```
 nx_tools add_task
 ```
-You will be prompted for your User Account password. 
+You will be prompted for your User Account password.
 
 The task is scheduled to check for NX11 updates every hour. If an update for the patch or build is found, you are prompted whether to fetch it -- the prompt times out after 10 seconds, in which case it acts as **Yes**.
 
@@ -110,12 +110,12 @@ AutoHotkey defines the hotkey symbols as such:
 | [a-zA-Z] | Any letter             |
 | F[1-12]  | Function key           |
 
-For instance, **!^s** will set the hotkey to **Control + Alt + S**. 
+For instance, **!^s** will set the hotkey to **Control + Alt + S**.
 
 #### Revert to defaults
 In the case where you screw up your configuration and want to revert to the defaults:
 * `nx_tools config update`: Update **empty** items with defaults.
-* `nx_tools config reset`: Reset all items to defaults. 
+* `nx_tools config reset`: Reset all items to defaults.
 
 ## Bugs / Feature Requests
 
@@ -123,4 +123,4 @@ You can submit bugs and feature requests on this [project's Issues](https://gith
 
 If you submit a bug, I would appreciate if you could attach your config file along with a snapshot of the command prompt.
 
-If you found any part of the README confusing, improvements to the documentation are very much welcome and appreciated. 
+If you found any part of the README confusing, improvements to the documentation are very much welcome and appreciated.

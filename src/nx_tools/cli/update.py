@@ -1,5 +1,6 @@
-import click
 import logging
+
+import click
 
 from ._click import confirm, prompt
 
@@ -104,7 +105,7 @@ def update_cli(nx_version, nx, tmg, sync):
             r = update.submit_tasks((t,))
             echo_result(r)
     else:
-        click.echo('Fetching:\n' + '\n'.join((t.item_name for t in tasks))
+        click.echo('Fetching:\n' + '\n'.join((t.item_name for t in tasks)))
         results = update.submit_tasks(tasks)
         for r in results:
             echo_result(r)

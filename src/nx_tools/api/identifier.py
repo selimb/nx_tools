@@ -1,9 +1,10 @@
 from __future__ import print_function
 
-import click
 import logging
 import os
 import subprocess
+
+import click
 
 from ..constants import PKG_BIN
 

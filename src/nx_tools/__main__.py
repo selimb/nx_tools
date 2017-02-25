@@ -1,14 +1,15 @@
-import click
 import logging
 import os
-from pkg_resources import parse_version
 import subprocess
 import sys
 
-from .cli._click import prompt, confirm, CONTEXT_SETTINGS, NamedGroup
-from . import cli
+from pkg_resources import parse_version
 
-__version__ = 1.10.0
+import click
+
+from . import __version__, cli
+from .cli._click import CONTEXT_SETTINGS, NamedGroup, confirm, prompt
+
 logger = logging.getLogger(__name__)
 
 def update():

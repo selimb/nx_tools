@@ -3,15 +3,16 @@ Functions for launching NX.
 
 This command uses _list.
 """
-import click
 import logging
 import os
-from pprint import pformat
 import subprocess
+from pprint import pformat
 
-from ..constants import HISTORY_PATH, HISTORY_MAX_RECORDS
-from .. import utils
+import click
+
 from . import _list
+from .. import utils
+from ..constants import HISTORY_MAX_RECORDS, HISTORY_PATH
 
 
 def query(dir_listing, msg):

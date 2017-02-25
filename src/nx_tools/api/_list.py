@@ -1,7 +1,8 @@
-import click
 import logging
 import os
 import time
+
+import click
 
 from .. import utils
 

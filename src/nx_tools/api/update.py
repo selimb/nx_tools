@@ -5,11 +5,11 @@ import collections
 import ftplib
 import glob
 import logging
-from multiprocessing.dummy import Pool as ThreadPool
 import os
 import shutil
-from subprocess import Popen, PIPE
 import sys
+from multiprocessing.dummy import Pool as ThreadPool
+from subprocess import PIPE, Popen
 
 from . import utils
 from .exceptions import *
@@ -223,7 +223,7 @@ def _extract(zip_path):
     exe_7z = 'C:\\Program Files\\7-Zip\\7zG.exe'
     if not os.path.exists(zip_path):
         raise NXToolsError('Archive does not exist: %s' % zip_path)
-    output_dir = os.path.splitext(zip_path)
+    output_dir, _ = os.path.splitext(zip_path)
     command = [exe_7z, 'x', zip_path, '-o' + output_dir]
     logger.debug('Extract command: ' + ' '.join(command))
     try:
@@ -236,4 +236,3 @@ def _extract(zip_path):
         errmsg = out.decode('utf-8')
         raise NXToolsError('Could not extract successfully.\n' + errmsg)
     logger.debug('File successfully extracted to: ' + output_dir)
-

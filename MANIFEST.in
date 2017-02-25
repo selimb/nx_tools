@@ -1,1 +1,1 @@
-include nx_tools/data/*
+global-include *.json *.exe

@@ -1,8 +1,8 @@
 import os
-import pytest
-import zipfile
 import shutil
+import zipfile
 
+import pytest
 from nx_tools.api import update as nxup
 from nx_tools.api.exceptions import NXToolsError
 
@@ -44,13 +44,15 @@ def temp_zip(tmpdir):
     os.mkdir(td)
     open(os.path.join(td, 'hello.txt'), 'w').write('content')
     zip_path = os.path.join(tmp, 'test123.zip')
-    with open(zip_path, 'w') as f:
-        z = zipfile.ZipFile(f, 'w')
+    with open(zip_path, 'w') as fzip:
+        z = zipfile.ZipFile(fzip, 'w')
         for root, dirs, files in os.walk(td):
             for f in files:
-                z.write(os.path.join(root, f))
+                fname = os.path.join(root, f)
+                arcname = os.path.relpath(fname, tmp)
+                z.write(fname, arcname)
         z.close()
-    os.remove(td)
+    shutil.rmtree(td)
     return zip_path
 
 
@@ -69,10 +71,12 @@ def test_extract(temp_zip):
     assert os.path.isfile(f)
     assert open(f).read() == 'content'
 
+
 @production
 def test_extract_nonexistent_archive():
     with pytest.raises(NXToolsError):
         nxup._extract('doesnotexist.7z')
+
 
 def test_windows_item():
     dat = [
@@ -85,6 +89,7 @@ def test_windows_item():
     res = [func(f) for f in fnames]
     assert list(expected) == res
 
+
 @production
 def test_ftp_connect_defaults():
     raise NotImplementedError
@@ -93,10 +98,12 @@ def test_ftp_connect_defaults():
         ftp = nxup.TMGUpdater._ftp_connect(d)
         ftp.close()
 
+
 @production
 def test_ftp_invalid_dir():
     with pytest.raises(NXToolsError):
-        ftp = nxup.TMGUpdater._ftp_connect('doesnotexist')
+        nxup.TMGUpdater._ftp_connect('doesnotexist')
+
 
 def test_is_new(tmpdir):
     name = 'nx11_0123'
@@ -106,6 +113,7 @@ def test_is_new(tmpdir):
     assert up._is_new(name)
     d.mkdir(name)
     assert not up._is_new(name)
+
 
 def test_list_new(tmpdir):
     d = tmpdir.mkdir('list_new')
@@ -118,20 +126,21 @@ def test_list_new(tmpdir):
     d.mkdir('third')
     assert up.list_new() == ['second']
 
+
 def test_make_task_ids(dumdir):
     ids = [5, 10, 2]
-
     up = nxup.TMGUpdater
     expected = ['TMGUpdater-%i' % i for i, _ in enumerate(ids)]
     assert up._mk_task_ids(ids) == expected
-
     up = nxup.NXUpdater
     expected = ['NXUpdater-%i' % i for i, _ in enumerate(ids)]
     assert up._mk_task_ids(ids) == expected
 
+
 def test_make_tasks_before_list(dumdir):
     up = DummyUpdater(local_dir=dumdir)
     assert up.make_tasks([0, 1]) == []
+
 
 def test_make_tasks_invalid_ids(dumdir):
     up = DummyUpdater(dumdir)
@@ -144,10 +153,12 @@ def test_make_tasks_invalid_ids(dumdir):
     with pytest.raises(NXToolsError):
         up.make_tasks(ids)
 
+
 def test_make_tasks_no_ids(dumdir):
     up = DummyUpdater(dumdir)
     up._new_items = ['a', 'b']
     assert up.make_tasks([]) == []
+
 
 def test_make_tasks_local_dir_does_not_exist(tmpdir):
     local_dir = os.path.join(str(tmpdir), 'local_dir')
@@ -156,20 +167,25 @@ def test_make_tasks_local_dir_does_not_exist(tmpdir):
     up.make_tasks([0, 1])
     assert os.path.exists(local_dir)
 
+
 def test_make_tasks(dumdir):
     kwargs = dict(local_dir=dumdir, remote_dir='remote', delete_zip=True)
     up = DummyUpdater(**kwargs)
     new_items = [5, 6, 7]
     up._new_items = new_items
     tasks = up.make_tasks(range(len(new_items)))
+
     def assert_all(func):
         assert all([func(i, t) for i, t in enumerate(tasks)])
+
     def test_type(i, t):
         return type(t) == DummyTask
+
     def test_kwarg(kw, datum):
         def func(i, t):
             return getattr(t, '_' + kw) == datum
         return func
+
     def test_item(i, t):
         return t._item == new_items[i]
 
@@ -178,6 +194,6 @@ def test_make_tasks(dumdir):
         assert_all(test_kwarg(kw, datum))
     assert_all(test_item)
 
+
 def test_empty_task_runs(dumdir):
     raise NotImplementedError
-

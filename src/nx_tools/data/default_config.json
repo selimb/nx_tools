@@ -27,7 +27,7 @@
         "nx1001": ["Y:\NX1001\{UGRAF}"],
         "nx10,nx1000": ["Y:\NX100\{UGRAF}"],
         "nx9": ["Y:\NX903\{UGRAF}"]
-    }
+    },
     // Patches
     "tmg": {
         "target_rule": "{HOME}\{version}\patches",
@@ -37,5 +37,5 @@
         "nx9": ["downloads/patches/nx/nx9"],
         "dev": [null, "{HOME}\dev"],
         "work": [null, null]
-    },
+    }
 }

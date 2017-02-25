@@ -1,7 +1,9 @@
 import os
-import pkg_resources
 
-PKG = pkg_resources.resource_filename(__name__, '')
+from pkg_resources import resource_filename, Requirement
+
+
+PKG = resource_filename('nx_tools', '')
 PKG_DATA = os.path.join(PKG, 'data')
 PKG_BIN = os.path.join(PKG, 'bin')
 DEFAULT_CONFIG_PATH = os.path.join(PKG_DATA, 'default_config.json')
