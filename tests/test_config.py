@@ -102,7 +102,6 @@ def test_write_json(tmpdir):
     assert os.path.exists(fpath)
 
 
-
 def test_can_read_default_config():
     nxconfig._read_default_config()
 
@@ -119,3 +118,26 @@ def test_read_user_config_invalid(tmpdir):
     with pytest.raises(UserConfigInvalid):
         nxconfig._read_user_config(fpath)
 
+
+def test_expand_config():
+    d = {
+
+    }
+
+
+def test_config_dummy_simple(tmpdir):
+    def mk(d):
+        return [str(d.mkdir('remote')), str(d.mkdir('local'))]
+    d = {'stuff': 'foo', 'tmg': {}, 'nx': {}}
+    nx_versions = ['nx9', 'nx10']
+    for v in nx_versions:
+        root = tmpdir.mkdir(v)
+        patches = root.mkdir('patches')
+        builds = root.mkdir('builds')
+        d['tmg'][v] = mk(patches)
+        d['nx'][v] = mk(builds)
+    conf = nxconfig.Config(d)
+    assert conf.get('stuff') == 'foo'
+    with pytest.raises(AssertionError):
+        conf.get('nope')
+    # assert sort(conf.list_versions()) == nx_versions

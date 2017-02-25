@@ -24,6 +24,7 @@ class Config(object):
     def __init__(self, dct):
         self._conf = dct
 
+
     def get(self, key):
         try:
             return self._conf[key]
@@ -44,7 +45,6 @@ class Config(object):
 
     def _local_dir(self, item_type, nx_version):
         raise NotImplementedError
-
 
     def _tracked_tmg(self):
         raise NotImplementedError
