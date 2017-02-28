@@ -25,7 +25,7 @@
         "nx1003": ["{LUC}\NX1003GroupKits"],
         "nx1002": ["Y:\NX1002\{UGRAF}"],
         "nx1001": ["Y:\NX1001\{UGRAF}"],
-        "nx10,nx1000": ["Y:\NX100\{UGRAF}"],
+        "nx10": ["Y:\NX100\{UGRAF}"],
         "nx9": ["Y:\NX903\{UGRAF}"]
     },
     // Patches

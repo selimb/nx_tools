@@ -3,16 +3,14 @@ Functions for updating NX patch and build.
 '''
 import collections
 import ftplib
-import glob
 import logging
 import os
 import shutil
-import sys
 from multiprocessing.dummy import Pool as ThreadPool
 from subprocess import PIPE, Popen
 
 from . import utils
-from .exceptions import *
+from .exceptions import NXToolsError
 
 logger = logging.getLogger(__name__)
 
@@ -26,7 +24,7 @@ TASK_ASSERT = 2
 
 
 def submit_tasks(tasks):
-    pool = Pool(_MAX_WORKERS)
+    pool = ThreadPool(_MAX_WORKERS)
     return pool.imap_unordered(run_task, tasks)
 
 
