@@ -7,4 +7,3 @@ production = pytest.mark.skipif(
     not os.environ.get('NX_TOOLS_ENV', '') == 'prod',
     reason='Not a production environment.'
 )
-

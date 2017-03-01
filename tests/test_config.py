@@ -2,48 +2,176 @@ import os
 import pytest
 
 import nx_tools.api.config as nxconfig
-from nx_tools.api.exceptions import UserConfigInvalid, UserConfigNotFound
+from nx_tools.api import utils
+from nx_tools.api.exceptions import InvalidConfig, NXToolsError
+from nx_tools.constants import DEFAULT_CONFIG_PATH
+
+@pytest.fixture
+def dummy_dct():
+    return {
+        'stuff': 'foo',
+        'tmg': {
+            'target_rule': 'tmg/{version}',
+            'nx12': ['ftp/nx12',],
+            'nx11': ['ftp/nx11', None],
+            'dev': [None, 'dev/path'],
+        },
+        'nx': {
+            'target_rule': 'nx/{version}',
+            'nx12': ['remote/nx12',],
+            'nx1101': ['remote/nx1101',],
+            'nx1102': ['remote/nx1102', 'local/nx1102'],
+            'nx9': ['nx9/to/ugii.exe', ],
+            'nx8.5': ['path/to/ugii.exe', 'whatever']
+        }
+    }
 
 
-def test_load_json_nonexistent():
-    with pytest.raises(IOError):
-        nxconfig._load_json('nonexistent')
+def test_config_from_json(tmpdir, dummy_dct):
+    fpath = os.path.join(str(tmpdir), 'config.json')
+    utils.write_json(dummy_dct, fpath)
+    conf_from_json = nxconfig.Config.from_json(fpath)
+    assert conf_from_json._conf == nxconfig.Config(dummy_dct)._conf
 
 
-def test_load_json_windows_paths(tmpdir):
-    tmp = str(tmpdir)
-    fpath = os.path.join(tmp, 'config.json')
-    open(fpath, 'w').write(r'{"tmg": {"nx9": "C:\Users\foo"}}')
-    d = nxconfig._load_json(fpath)
-    assert d['tmg']['nx9'] == r'C:\Users\foo'
+def test_config_nx_branch(dummy_dct):
+    conf = nxconfig.Config(dummy_dct)
+    for ver in ['nx12', 'nx1101', 'nx1102']:
+        branch = conf.nx_branch(ver)
+        assert branch.stat == nxconfig.TRACKED
+        assert branch.remote == 'remote/%s' % ver
+        prefix = 'nx'
+        if ver == 'nx1102':
+            prefix = 'local'
+        assert branch.local == '%s/%s' % (prefix, ver)
+    for ver in ['nx9', 'nx8.5']:
+        branch = conf.nx_branch(ver)
+        assert branch.stat == nxconfig.FROZEN
+        assert branch.remote == dummy_dct['nx'][ver][0]
+        assert branch.local == None
+    with pytest.raises(NXToolsError):
+        conf.nx_branch('nx11')
+        conf.nx_branch('nx15')
+
+def test_config_tmg_branch(dummy_dct):
+    conf = nxconfig.Config(dummy_dct)
+    for ver in ['nx12', 'nx11']:
+        branch = conf.tmg_branch(ver)
+        assert branch.stat == nxconfig.TRACKED
+        assert branch.remote == 'ftp/%s' % ver
+        assert branch.local == 'tmg/%s' % ver
+    assert conf.tmg_branch('nx11') == conf.tmg_branch('nx1101')
+    branch = conf.tmg_branch('dev')
+    assert branch.stat == nxconfig.LOCAL
+    assert branch.local == 'dev/path'
+    assert branch.remote == None
 
 
-def test_write_json(tmpdir):
-    tmp = str(tmpdir)
-    d = os.path.join(tmp, 'dirdoesnotexistyet')
-    fpath = os.path.join(d, 'config.json')
-    d = {}
-    d['tmg'] = {'nx9': 'asdf'}
-    nxconfig._write_json(d, fpath)
-    assert os.path.exists(fpath)
+def test_config_get_option(dummy_dct):
+    conf = nxconfig.Config(dummy_dct)
+    assert conf.get_option('stuff') == 'foo'
+    with pytest.raises(NXToolsError):
+        conf.get_option('nope')
+        conf.get_option(nxconfig._TMG_KEY)
+        conf.get_option(nxconfig._NX_KEY)
 
 
-def test_pop_vars_no_vars():
-    d0 = {'foo': 'bar'}
-    d = d0.copy()
-    r = nxconfig._pop_vars(d)
-    assert d == d0
+def test_fuzzy_version_no_match():
+    nx_version = 'nx10'
+    available = ['nx9', 'nx11']
+    with pytest.raises(NXToolsError):
+        nxconfig.Config._fuzzy_version(nx_version, available)
+
+
+def test_fuzzy_version_ambiguous():
+    nx_version = 'nx901'
+    available = ['nx9', 'nx90', 'nx10']
+    with pytest.raises(NXToolsError):
+        nxconfig.Config._fuzzy_version(nx_version, available)
+
+
+def test_fuzzy_version_exact_match():
+    nx_version = 'nx10'
+    available = ['nx10', 'nx9']
+    assert nxconfig.Config._fuzzy_version(nx_version, available) == nx_version
+    available.append('nx1001')
+    assert nxconfig.Config._fuzzy_version(nx_version, available) == nx_version
+
+
+def test_fuzzy_version_fuzzy_match():
+    nx_version = 'nx1001'
+    available = ['nx9', 'nx10', 'nx11']
+    assert nxconfig.Config._fuzzy_version(nx_version, available) == 'nx10'
+
+
+def test_can_parse_default_config():
+    nxconfig._parse(utils.load_json(DEFAULT_CONFIG_PATH))
+
+
+def test_parse_config():
+    d = {
+        'foo': 'bar',
+        'HOME': 'hello',
+        'REMOTE': 'bye',
+        'nx': {
+            'target_rule': 'nx/{HOME}/{version}',
+            'nx9': ['{REMOTE}/nx9/ugraf.exe', None],
+            'nx10': ['{REMOTE}/nx10', None]
+        },
+        'tmg': {
+            'target_rule': 'tmg/{HOME}/tmg{version}',
+            'nx9': ['{REMOTE}/nx9'],
+            'untracked': [None, '{HOME}/local'],
+        }
+    }
+    r = nxconfig._parse(d)
+    assert r.pop('foo') == 'bar'
+    assert r.pop('nx') == {
+        'nx9': ['bye/nx9/ugraf.exe', None],
+        'nx10': ['bye/nx10', 'nx/hello/nx10']
+    }
+    assert r.pop('tmg') == {
+        'nx9': ['bye/nx9', 'tmg/hello/tmgnx9'],
+        'untracked': [None, 'hello/local']
+    }
     assert r == {}
 
 
-def test_pop_vars():
-    expected = {'HOME': 'homeval', 'HI': 'hello'}
-    d0 = {'foo': 'bar', 'tmg': {'nx9': 'baz'}}
-    d = d0.copy()
-    d.update(expected)
-    user_vars = nxconfig._pop_vars(d)
-    assert user_vars == expected
-    assert d == d0
+def test_parse_config_missing_project():
+    d = {'stuff': 'foo'}
+    with pytest.raises(InvalidConfig):
+        nxconfig._parse(d)
+    d['tmg'] = {'tmgstuff': 'foo'}
+    with pytest.raises(InvalidConfig):
+        nxconfig._parse(d)
+    print d
+    d['nx'] = {'nxstuff': 'bar'}
+    nxconfig._parse(d)
+
+
+def test_expand_project_with_untracked_branch():
+    ver = 'dev'
+    user_vars = {'HOME': 'myhome'}
+    d = {ver: [None, '{HOME}/{version}/localdir']}
+    expect = {ver: [None, 'myhome/%s/localdir' % ver]}
+    assert nxconfig._expand_project(d, user_vars) == expect
+
+
+def test_expand_project_error_on_version_in_remote():
+    d = {'nx9': ['{version}/remote', 'foo']}
+    with pytest.raises(InvalidConfig):
+        nxconfig._expand_project(d, {})
+
+
+def test_expand_project_with_frozen_branch():
+    user_vars = {'REMOTE': 'rem'}
+    remote = '{REMOTE}/something.exe'
+    ver = 'nx9'
+    d = {ver: [remote, None]}
+    expect = {ver: ['rem/something.exe', None]}
+    assert nxconfig._expand_project(d, user_vars) == expect
+    d1 = {ver: [remote, 'whocares']}
+    assert nxconfig._expand_project(d1, user_vars) == expect
 
 
 def test_expand():
@@ -77,14 +205,14 @@ def test_expand_project_no_rule():
 
 def test_expand_project_missing_var():
     d = {'nx9': ['{FOO}', 'hello']}
-    with pytest.raises(UserConfigInvalid):
+    with pytest.raises(InvalidConfig):
         nxconfig._expand_project(d, {})
 
 
 def test_expand_project_no_rule_invalid():
     d = {'nx10': ['{REMOTE}/nx10',]}
     user_vars = {'REMOTE': 'foo'}
-    with pytest.raises(UserConfigInvalid):
+    with pytest.raises(InvalidConfig):
         nxconfig._expand_project(d, user_vars)
 
 
@@ -105,125 +233,38 @@ def test_is_frozen():
     assert not nxconfig._is_frozen_remote('foo')
 
 
-def test_expand_project_with_frozen_branch():
-    d = {'nx9': ['something.exe', None]}
-    assert nxconfig._expand_project(d, {}) == d
-    d1 = {'nx9': ['something.exe', 'whocares']}
-    assert nxconfig._expand_project(d1, {}) == d
-
-
-def test_parse_config():
-    d = {
-        'foo': 'bar',
-        'HOME': 'hello',
-        'REMOTE': 'bye',
-        'nx': {
-            'target_rule': 'nx/{HOME}/{version}',
-            'nx9': ['{REMOTE}/nx9/ugraf.exe', None],
-            'nx10': ['{REMOTE}/nx10', None]
-        },
-        'tmg': {
-            'target_rule': 'tmg/{HOME}/tmg{version}',
-            'nx9': ['{REMOTE}/nx9'],
-        }
-    }
-    r = nxconfig._parse_config(d)
-    assert d == {}
-    assert r.pop('foo') == 'bar'
-    assert r.pop('nx') == {
-        'nx9': ['bye/nx9/ugraf.exe', None],
-        'nx10': ['bye/nx10', 'nx/hello/nx10']
-    }
-    assert r.pop('tmg') == {
-        'nx9': ['bye/nx9', 'tmg/hello/tmgnx9']
-    }
+def test_pop_vars_no_vars():
+    d0 = {'foo': 'bar'}
+    d = d0.copy()
+    r = nxconfig._pop_vars(d)
+    assert d == d0
     assert r == {}
 
 
-def test_fuzzy_version_no_match():
-    nx_version = 'nx10'
-    available = ['nx9', 'nx11']
-    with pytest.raises(UserConfigInvalid):
-        nxconfig._fuzzy_version(nx_version, available)
-
-
-def test_fuzzy_version_ambiguous():
-    nx_version = 'nx901'
-    available = ['nx9', 'nx90', 'nx10']
-    with pytest.raises(UserConfigInvalid):
-        nxconfig._fuzzy_version(nx_version, available)
-
-
-def test_fuzzy_version_exact_match():
-    nx_version = 'nx10'
-    available = ['nx10', 'nx9']
-    assert nxconfig._fuzzy_version(nx_version, available) == nx_version
-    available.append('nx1001')
-    assert nxconfig._fuzzy_version(nx_version, available) == nx_version
-
-
-def test_fuzzy_version_fuzzy_match():
-    nx_version = 'nx1001'
-    available = ['nx9', 'nx10', 'nx11']
-    assert nxconfig._fuzzy_version(nx_version, available) == 'nx10'
+def test_pop_vars():
+    expected = {'HOME': 'homeval', 'HI': 'hello'}
+    d0 = {'foo': 'bar', 'tmg': {'nx9': 'baz'}}
+    d = d0.copy()
+    d.update(expected)
+    user_vars = nxconfig._pop_vars(d)
+    assert user_vars == expected
+    assert d == d0
 
 
 def test_recursive_dict_update():
     d = {
         'tmg': {
-            'nx9': 'a'
+            'default': 'tmgdefault',
+            'nx9': 'a',
+            'alist': [1, 2],
         },
         'default': 'blah',
         'override': None
     }
-    u = {'tmg': {'nx9': 'b'}, 'override': 'user'}
+    u = {'tmg': {'nx9': 'b', 'alist': [5, 6]}, 'override': 'user'}
     r = nxconfig._recursive_dict_update(d, u)
     assert r['default'] == 'blah'
     assert r['override'] == 'user'
     assert r['tmg']['nx9'] == 'b'
-
-
-def test_can_read_default_config():
-    nxconfig._read_default_config()
-
-
-def test_read_user_config_error_not_found():
-    fpath = 'doesnotexist'
-    try:
-        nxconfig._read_user_config(fpath)
-    except UserConfigNotFound as e:
-        assert fpath in e.message
-    else:
-        assert False
-
-
-def test_read_user_config_invalid(tmpdir):
-    tmp = str(tmpdir)
-    fpath = os.path.join(tmp, 'config.json')
-    open(fpath, 'w').write('{"tmg": {"first": 1 "second": 2}}')
-    with pytest.raises(UserConfigInvalid):
-        nxconfig._read_user_config(fpath)
-
-
-def test_read_user_config(tmpdir):
-    tmp = str(tmpdir)
-    fpath = os.path.join(tmp, 'config.json')
-    open(fpath, 'w').write('{"tmg": {"nx9": "Hello\\World"}}')
-
-
-def test_config_dummy_simple(tmpdir):
-    def mk(d):
-        return [str(d.mkdir('remote')), str(d.mkdir('local'))]
-    d = {'stuff': 'foo', 'tmg': {}, 'nx': {}}
-    nx_versions = ['nx9', 'nx10']
-    for v in nx_versions:
-        root = tmpdir.mkdir(v)
-        patches = root.mkdir('patches')
-        builds = root.mkdir('builds')
-        d['tmg'][v] = mk(patches)
-        d['nx'][v] = mk(builds)
-    conf = nxconfig.Config(d)
-    assert conf.get('stuff') == 'foo'
-    with pytest.raises(AssertionError):
-        conf.get('nope')
-    # assert sort(conf.list_versions()) == nx_versions
+    assert r['tmg']['default'] == 'tmgdefault'
+    assert r['tmg']['alist'] == [5, 6]

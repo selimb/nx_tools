@@ -2,9 +2,9 @@ class NXToolsError(Exception):
     pass
 
 
-class UserConfigInvalid(NXToolsError):
+class InvalidConfig(NXToolsError):
     pass
 
 
-class UserConfigNotFound(NXToolsError):
+class ConfigNotFound(NXToolsError):
     pass
