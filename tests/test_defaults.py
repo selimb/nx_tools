@@ -1,4 +1,5 @@
 import os
+
 import pytest
 
 import nx_tools.api as nxt
@@ -6,11 +7,8 @@ from nx_tools.constants import DEFAULT_CONFIG_PATH
 from nx_tools.api import utils
 from nx_tools.api.config import TRACKED, FROZEN, LOCAL
 
+from .conftest import production
 
-production = pytest.mark.skipif(
-    not os.environ.get('NX_TOOLS_ENV', '') == 'prod',
-    reason='Not a production environment.'
-)
 
 @pytest.fixture
 def default_env():
@@ -19,6 +17,7 @@ def default_env():
 
 @pytest.fixture
 def check_defaults(default_env, tmpdir):
+    expected_exts ['.7z', '.zip']
     def func(project_key):
         if project_key == 'tmg':
             updater_cls = nxt.update.TMGUpdater
@@ -42,6 +41,9 @@ def check_defaults(default_env, tmpdir):
             up = updater_cls(local, branch.remote, False)
             new_items = up.list_new()
             assert new_items
+            exts = [os.path.splitext(it)[1] for it in new_items]
+            is_zip = [ext in expected_exts for ext in exts]
+            assert all(is_zip)
 
     return func
 

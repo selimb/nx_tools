@@ -16,7 +16,6 @@ logger = logging.getLogger(__name__)
 
 _MAX_WORKERS = 3
 
-Task = collections.namedtuple('Task', ('func', 'args'))
 TaskResult = collections.namedtuple('TaskResult', ('id', 'stat', 'reason'))
 TASK_SUCCESS = 0
 TASK_FAIL = 1
@@ -24,6 +23,8 @@ TASK_ASSERT = 2
 
 
 def submit_tasks(tasks):
+    def run_task(task):
+        return task.run()
     pool = ThreadPool(_MAX_WORKERS)
     return pool.imap_unordered(run_task, tasks)
 
@@ -75,7 +76,7 @@ class _Task(object):
 
 class TMGTask(_Task):
     def _fetch(self, dest_zip):
-        ftp = TMGUpdater._ftp_connect(self._local_dir)
+        ftp = TMGUpdater._ftp_connect(self._remote_dir)
         try:
             with open(dest_zip, 'wb') as fh:
                 ftp.retrbinary('RETR ' + self._item, fh.write)
@@ -88,18 +89,17 @@ class TMGTask(_Task):
 
 class NXTask(_Task):
     def _fetch(self, dest_zip):
-        src = os.path.join(self._local_dir, self._item)
+        src = os.path.join(self._remote_dir, self._item)
         try:
             shutil.copy(src, dest_zip)
         except IOError as e:
-            raise NXToolsError('Could not copy %s to %s' % self._item, dest_zip)
+            raise NXToolsError('Could not copy %s to %s' % (self._item, dest_zip))
 
 class _Updater(object):
 
     task_cls = None
 
     def __init__(self, local_dir, remote_dir, delete_zip):
-        assert self.task_cls is not None
         self._local_dir = local_dir
         self._remote_dir = remote_dir
         self._dz = delete_zip
@@ -166,6 +166,7 @@ class NXUpdater(_Updater):
 class TMGUpdater(_Updater):
 
     task_cls = TMGTask
+    ftp_host = 'ftp'
 
     def _list_items(self):
         ftp = self._ftp_connect(self._remote_dir)
@@ -183,7 +184,7 @@ class TMGUpdater(_Updater):
     def _ftp_connect(pathname):
         logger.debug('Creating FTP connection in directory: ' + pathname)
         try:
-            ftp = ftplib.FTP('ftp')
+            ftp = ftplib.FTP(self.ftp_host)
             ftp.login()
             ftp.cwd(pathname)
         except ftplib.all_errors as e:
@@ -217,3 +218,4 @@ def _extract(zip_path):
         errmsg = out.decode('utf-8')
         raise NXToolsError('Could not extract successfully.\n' + errmsg)
     logger.debug('File successfully extracted to: ' + output_dir)
+
