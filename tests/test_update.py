@@ -3,8 +3,10 @@ import shutil
 import zipfile
 
 import pytest
+
 from nx_tools.api import update as nxup
 from nx_tools.api.exceptions import NXToolsError
+import nx_tools
 
 from .conftest import production
 
@@ -88,15 +90,6 @@ def test_windows_item():
     func = nxup.TMGUpdater._is_windows_item
     res = [func(f) for f in fnames]
     assert list(expected) == res
-
-
-@production
-def test_ftp_connect_defaults():
-    raise NotImplementedError
-    dirs = []
-    for d in dirs:
-        ftp = nxup.TMGUpdater._ftp_connect(d)
-        ftp.close()
 
 
 @production

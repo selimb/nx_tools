@@ -42,16 +42,11 @@ _NX_KEY = 'nx'
 Branch = collections.namedtuple('Branch', ('remote', 'local', 'stat'))
 
 
-class Config(object):
+class Environment(object):
 
     project_keys = (_TMG_KEY, _NX_KEY)
 
-    def __init__(self, dct):
-        self._conf = _parse(dct)
-        logger.debug('Parsed configuration:\n%s' % pformat(self._conf))
-
-    @classmethod
-    def from_json(cls, *fpaths_json):
+    def __init__(self, *fpaths_json):
         if len(fpaths_json) == 0:
             raise NXToolsError('Must supply at least one path')
         dct = None
@@ -70,7 +65,13 @@ class Config(object):
             logger.debug('Updating existing JSON with:\n%s' % pformat(new))
             dct = _recursive_dict_update(dct, new)
             logger.debug('Result JSON:\n%s' % pformat(dct))
-        return cls(dct)
+
+        self._conf = _parse(dct)
+        logger.debug('Parsed configuration:\n%s' % pformat(self._conf))
+
+    @classmethod
+    def from_json(cls, *fpaths_json):
+        return cls(conf)
 
     def get_option(self, key):
         if key in self.project_keys:
@@ -80,11 +81,20 @@ class Config(object):
         except KeyError:
             raise NXToolsError('Configuration has no %s entry' % key)
 
-    def tmg_branch(self, nx_version):
+    def get_tmg_branch(self, nx_version):
         return self._mk_branch(_TMG_KEY, nx_version, True)
 
-    def nx_branch(self, nx_version):
+    def get_nx_branch(self, nx_version):
         return self._mk_branch(_NX_KEY, nx_version, False)
+
+    def list_tmg_versions(self):
+        return self._list_versions(_TMG_KEY)
+
+    def list_nx_versions(self):
+        return self._list_versions(_NX_KEY)
+
+    def _list_versions(self, project_key):
+        return self._conf[project_key].keys()
 
     def _mk_branch(self, project_key, nx_version, fuzzy):
         project = self._conf[project_key]
@@ -137,9 +147,8 @@ class Config(object):
         return matches[0]
 
 
-def _parse(dct0):
-    '''Empties input dictionary'''
-    dct = dct0.copy()
+def _parse(json_dict):
+    dct = json_dict.copy()
     user_vars = _pop_vars(dct)
     r = {}
     for project_key in (_TMG_KEY, _NX_KEY):

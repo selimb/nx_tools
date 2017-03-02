@@ -44,3 +44,20 @@ def test_write_json(tmpdir):
     d['tmg'] = {'nx9': 'asdf'}
     utils.write_json(d, fpath)
     assert os.path.exists(fpath)
+
+
+def test_ensure_dir_exists(tmpdir):
+    root = str(tmpdir)
+    d = os.path.join(root, 'testdir', 'nested')
+    utils.ensure_dir_exists(d)
+    assert os.path.exists(d) and os.path.isdir(d)
+    f = os.path.join(d, 'file')
+    open(f, 'w').write('h')
+    utils.ensure_dir_exists(d)
+    assert open(f).read() == 'h'
+
+
+def test_get_filename(tmpdir):
+    fp = tmpdir.mkdir('tmp').join('hello_._world.7z')
+    assert utils.get_filename(str(fp)) == 'hello_._world'
+

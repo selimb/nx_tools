@@ -96,23 +96,10 @@ class NXTask(_Task):
 
 class _Updater(object):
 
-    items_key = None
     task_cls = None
 
-    @classmethod
-    def from_config(cls, config, nx_version):
-        assert items_key is not None
-        assert task_cls is not None
-        local = config.get_local(items_key, nx_version)
-        remote = config.get_remote(items_key, nx_version)
-        dz = config.get('delete_zip')
-        return cls(
-            local_dir=local,
-            remote_dir=remote,
-            delete_zip=dz,
-        )
-
     def __init__(self, local_dir, remote_dir, delete_zip):
+        assert self.task_cls is not None
         self._local_dir = local_dir
         self._remote_dir = remote_dir
         self._dz = delete_zip
@@ -159,18 +146,15 @@ class _Updater(object):
 
 class NXUpdater(_Updater):
 
-    items_key = 'nx'
     task_cls = NXTask
-
-    def _list_files(d):
-        return [f for f in os.listdir(d) if os.path.isfile(os.path.join(d, f))]
 
     def _list_items(self):
         if not os.path.exists(self._remote_dir):
             msg = 'NX remote directory does not exist: ' + self._remote_dir
             raise NXToolsError(msg)
 
-        files = _list_files(self._remote_dir)
+        files = [f for f in os.listdir(self._remote_dir)
+                 if os.path.isfile(os.path.join(self._remote_dir, f))]
         logger.debug(
             'NX Remote %s contains:\n%s'
             % (self._remote_dir, '\n'.join(files))
@@ -181,14 +165,13 @@ class NXUpdater(_Updater):
 
 class TMGUpdater(_Updater):
 
-    items_key = 'tmg'
     task_cls = TMGTask
 
     def _list_items(self):
-        ftp = self._connect(self._local_dir)
+        ftp = self._ftp_connect(self._remote_dir)
         fnames = ftp.nlst()
         ftp.close()
-        logger.debug('FTP Listing: %s\n' + '\n'.join(names))
+        logger.debug('FTP Listing: %s\n' + '\n'.join(fnames))
 
         return [f for f in fnames if self._is_windows_item(f)]
 

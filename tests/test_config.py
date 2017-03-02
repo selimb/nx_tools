@@ -4,7 +4,7 @@ import pytest
 import nx_tools.api.config as nxconfig
 from nx_tools.api import utils
 from nx_tools.api.exceptions import InvalidConfig, NXToolsError
-from nx_tools.constants import DEFAULT_CONFIG_PATH
+
 
 @pytest.fixture
 def dummy_dct():
@@ -26,18 +26,16 @@ def dummy_dct():
         }
     }
 
-
-def test_config_from_json(tmpdir, dummy_dct):
+@pytest.fixture
+def dummy_env(dummy_dct, tmpdir):
     fpath = os.path.join(str(tmpdir), 'config.json')
     utils.write_json(dummy_dct, fpath)
-    conf_from_json = nxconfig.Config.from_json(fpath)
-    assert conf_from_json._conf == nxconfig.Config(dummy_dct)._conf
+    return nxconfig.Environment(fpath)
 
 
-def test_config_nx_branch(dummy_dct):
-    conf = nxconfig.Config(dummy_dct)
+def test_environment_nx_branch(dummy_env, dummy_dct):
     for ver in ['nx12', 'nx1101', 'nx1102']:
-        branch = conf.nx_branch(ver)
+        branch = dummy_env.get_nx_branch(ver)
         assert branch.stat == nxconfig.TRACKED
         assert branch.remote == 'remote/%s' % ver
         prefix = 'nx'
@@ -45,67 +43,70 @@ def test_config_nx_branch(dummy_dct):
             prefix = 'local'
         assert branch.local == '%s/%s' % (prefix, ver)
     for ver in ['nx9', 'nx8.5']:
-        branch = conf.nx_branch(ver)
+        branch = dummy_env.get_nx_branch(ver)
         assert branch.stat == nxconfig.FROZEN
         assert branch.remote == dummy_dct['nx'][ver][0]
         assert branch.local == None
     with pytest.raises(NXToolsError):
-        conf.nx_branch('nx11')
-        conf.nx_branch('nx15')
+        dummy_env.get_nx_branch('nx11')
+        dummy_env.get_nx_branch('nx15')
 
-def test_config_tmg_branch(dummy_dct):
-    conf = nxconfig.Config(dummy_dct)
+def test_config_tmg_branch(dummy_env):
     for ver in ['nx12', 'nx11']:
-        branch = conf.tmg_branch(ver)
+        branch = dummy_env.get_tmg_branch(ver)
         assert branch.stat == nxconfig.TRACKED
         assert branch.remote == 'ftp/%s' % ver
         assert branch.local == 'tmg/%s' % ver
-    assert conf.tmg_branch('nx11') == conf.tmg_branch('nx1101')
-    branch = conf.tmg_branch('dev')
+    assert dummy_env.get_tmg_branch('nx11') == dummy_env.get_tmg_branch('nx1101')
+    branch = dummy_env.get_tmg_branch('dev')
     assert branch.stat == nxconfig.LOCAL
     assert branch.local == 'dev/path'
     assert branch.remote == None
 
 
-def test_config_get_option(dummy_dct):
-    conf = nxconfig.Config(dummy_dct)
-    assert conf.get_option('stuff') == 'foo'
+def test_config_list_versions(dummy_env):
+    expect_tmg = set(['nx12', 'nx11', 'dev'])
+    expect_nx = set(['nx12', 'nx1101', 'nx1102', 'nx9', 'nx8.5'])
+    expects = [expect_tmg, expect_nx]
+    funcs = ['list_tmg_versions', 'list_nx_versions']
+    for func, expect in zip(funcs, expects):
+        assert set(getattr(dummy_env, func)()) == expect
+
+
+def test_config_get_option(dummy_env):
+    assert dummy_env.get_option('stuff') == 'foo'
     with pytest.raises(NXToolsError):
-        conf.get_option('nope')
-        conf.get_option(nxconfig._TMG_KEY)
-        conf.get_option(nxconfig._NX_KEY)
+        dummy_env.get_option('nope')
+        dummy_env.get_option(nxconfig._TMG_KEY)
+        dummy_env.get_option(nxconfig._NX_KEY)
 
 
 def test_fuzzy_version_no_match():
     nx_version = 'nx10'
     available = ['nx9', 'nx11']
     with pytest.raises(NXToolsError):
-        nxconfig.Config._fuzzy_version(nx_version, available)
+        nxconfig.Environment._fuzzy_version(nx_version, available)
 
 
 def test_fuzzy_version_ambiguous():
     nx_version = 'nx901'
     available = ['nx9', 'nx90', 'nx10']
     with pytest.raises(NXToolsError):
-        nxconfig.Config._fuzzy_version(nx_version, available)
+        nxconfig.Environment._fuzzy_version(nx_version, available)
 
 
 def test_fuzzy_version_exact_match():
     nx_version = 'nx10'
     available = ['nx10', 'nx9']
-    assert nxconfig.Config._fuzzy_version(nx_version, available) == nx_version
+    assert nxconfig.Environment._fuzzy_version(nx_version, available) == nx_version
     available.append('nx1001')
-    assert nxconfig.Config._fuzzy_version(nx_version, available) == nx_version
+    assert nxconfig.Environment._fuzzy_version(nx_version, available) == nx_version
 
 
 def test_fuzzy_version_fuzzy_match():
     nx_version = 'nx1001'
     available = ['nx9', 'nx10', 'nx11']
-    assert nxconfig.Config._fuzzy_version(nx_version, available) == 'nx10'
-
-
-def test_can_parse_default_config():
-    nxconfig._parse(utils.load_json(DEFAULT_CONFIG_PATH))
+    assert nxconfig.Environment._fuzzy_version(nx_version, available) == 'nx10'
 
 
 def test_parse_config():
