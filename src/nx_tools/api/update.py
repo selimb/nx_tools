@@ -1,6 +1,4 @@
-'''
-Functions for updating NX patch and build.
-'''
+from contextlib import contextmanager
 import collections
 import ftplib
 import logging
@@ -15,6 +13,9 @@ from .exceptions import NXToolsError
 logger = logging.getLogger(__name__)
 
 _MAX_WORKERS = 3
+_FTP_HOSTNAME = 'ftp'
+_FTP_PORT = 0  # Default FTP port
+_7Z_EXE = 'C:\\Program Files\\7-Zip\\7zG.exe'
 
 TaskResult = collections.namedtuple('TaskResult', ('id', 'stat', 'reason'))
 TASK_SUCCESS = 0
@@ -76,15 +77,12 @@ class _Task(object):
 
 class TMGTask(_Task):
     def _fetch(self, dest_zip):
-        ftp = TMGUpdater._ftp_connect(self._remote_dir)
-        try:
+        with _ftp_client(self._remote_dir) as ftp:
             with open(dest_zip, 'wb') as fh:
                 ftp.retrbinary('RETR ' + self._item, fh.write)
-        except IOError as e:
-            msg = 'Could not write to %s.\n%s' % (dest_zip, e.message)
-            raise NXToolsError(msg)
-        finally:
-            ftp.close()
+#       except IOError as e:
+#           msg = 'Could not write to %s.\n%s' % (dest_zip, e.message)
+#           raise NXToolsError(msg)
 
 
 class NXTask(_Task):
@@ -166,12 +164,10 @@ class NXUpdater(_Updater):
 class TMGUpdater(_Updater):
 
     task_cls = TMGTask
-    ftp_host = 'ftp'
 
     def _list_items(self):
-        ftp = self._ftp_connect(self._remote_dir)
-        fnames = ftp.nlst()
-        ftp.close()
+        with _ftp_client(self._remote_dir) as ftp:
+            fnames = ftp.nlst()
         logger.debug('FTP Listing: %s\n' + '\n'.join(fnames))
 
         return [f for f in fnames if self._is_windows_item(f)]
@@ -179,19 +175,6 @@ class TMGUpdater(_Updater):
     @staticmethod
     def _is_windows_item(fname):
         return 'wntx64' in fname or 'win64' in fname
-
-    @staticmethod
-    def _ftp_connect(pathname):
-        logger.debug('Creating FTP connection in directory: ' + pathname)
-        try:
-            ftp = ftplib.FTP(self.ftp_host)
-            ftp.login()
-            ftp.cwd(pathname)
-        except ftplib.all_errors as e:
-            ftp.close()
-            raise NXToolsError('FTP connection error:\n' + e.message)
-
-        return ftp
 
 
 def is_new(f, target_dir):
@@ -201,17 +184,32 @@ def is_new(f, target_dir):
     return True
 
 
+@contextmanager
+def _ftp_client(pathname):
+    logger.debug('Creating FTP connection in directory: ' + pathname)
+    try:
+        ftp = ftplib.FTP()
+        ftp.connect(_FTP_HOSTNAME, _FTP_PORT)
+        ftp.login()
+        ftp.cwd(pathname)
+        yield ftp
+    except ftplib.all_errors as e:
+        ftp.close()
+        raise NXToolsError('FTP connection error:\n%s' % e)
+    finally:
+        ftp.close()
+
+
 def _extract(zip_path):
-    exe_7z = 'C:\\Program Files\\7-Zip\\7zG.exe'
     if not os.path.exists(zip_path):
         raise NXToolsError('Archive does not exist: %s' % zip_path)
     output_dir, _ = os.path.splitext(zip_path)
-    command = [exe_7z, 'x', zip_path, '-o' + output_dir]
+    command = [_7Z_EXE, 'x', zip_path, '-o' + output_dir]
     logger.debug('Extract command: ' + ' '.join(command))
     try:
         p = Popen(command, stdout=PIPE, stderr=PIPE)
-    except WindowsError:
-        raise NXToolsError('Could not find 7-Zip at %s.' % exe_7z)
+    except OSError:
+        raise NXToolsError('Could not find 7-Zip at %s.' % _7Z_EXE)
     p.wait()
     if p.returncode != 0:
         out, _ = process.communicate()

@@ -7,7 +7,7 @@ from nx_tools.constants import DEFAULT_CONFIG_PATH
 from nx_tools.api import utils
 from nx_tools.api.config import TRACKED, FROZEN, LOCAL
 
-from .conftest import production
+from .conftest import maya
 
 
 @pytest.fixture
@@ -48,12 +48,12 @@ def check_defaults(default_env, tmpdir):
     return func
 
 
-@production
+@maya('FTP')
 def test_tmg_defaults(check_defaults):
     check_defaults('tmg')
 
 
-@production
+@maya('Luc')
 def test_nx_defaults_exist(check_defaults):
     check_defaults('nx')
 
@@ -67,3 +67,4 @@ def test_default_config_no_errors(default_env):
 
 def test_can_parse_default_config():
     nxt.config._parse(utils.load_json(DEFAULT_CONFIG_PATH))
+
