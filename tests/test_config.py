@@ -145,7 +145,6 @@ def test_parse_config_missing_project():
     d['tmg'] = {'tmgstuff': 'foo'}
     with pytest.raises(InvalidConfig):
         nxconfig._parse(d)
-    print d
     d['nx'] = {'nxstuff': 'bar'}
     nxconfig._parse(d)
 

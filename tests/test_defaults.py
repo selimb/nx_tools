@@ -17,7 +17,7 @@ def default_env():
 
 @pytest.fixture
 def check_defaults(default_env, tmpdir):
-    expected_exts ['.7z', '.zip']
+    expected_exts = ['.7z', '.zip']
     def func(project_key):
         if project_key == 'tmg':
             updater_cls = nxt.update.TMGUpdater

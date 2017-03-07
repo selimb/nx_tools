@@ -55,13 +55,13 @@ def dumdir(tmpdir):
 
 
 @pytest.fixture(scope='module')
-def temp_zip(tmpdir_factory):
+def dummy_zip(tmpdir_factory):
     tmp = tmpdir_factory.mktemp('remote').mkdir('test_zip')
     tmp = str(tmp)
     td = os.path.join(tmp, 'testdir')
     os.mkdir(td)
     open(os.path.join(td, 'hello.txt'), 'w').write('content')
-    zip_path = os.path.join(tmp, 'tmg11_win64_1234.7z')
+    zip_path = os.path.join(tmp, 'tmg11_win64_1234.zip')
     with open(zip_path, 'w') as fzip:
         z = zipfile.ZipFile(fzip, 'w')
         for root, dirs, files in os.walk(td):
@@ -73,6 +73,12 @@ def temp_zip(tmpdir_factory):
     shutil.rmtree(td)
     return zip_path
 
+
+@pytest.fixture(scope='function')
+def local_zip(dummy_zip, dumdir):
+    dest = os.path.join(dumdir, os.path.basename(dummy_zip))
+    shutil.copy(dummy_zip, dest)
+    return dest
 
 @pytest.fixture(scope='function')
 def dev_7z(monkeypatch):
@@ -90,10 +96,13 @@ def dev_7z(monkeypatch):
 
 
 class FTPStubThread(threading.Thread):
+    daemon = True
+    _lock = threading.Lock()
     def __init__(self, host, port, user_root):
         self.host = host
         self.port = port
         self.user_root = user_root
+        self._serving = False
         super(FTPStubThread, self).__init__()
 
     def run(self):
@@ -101,21 +110,32 @@ class FTPStubThread(threading.Thread):
         authorizer.add_anonymous(self.user_root)
         handler = pyftpdlib.handlers.FTPHandler
         handler.authorizer = authorizer
-        self.server = pyftpdlib.servers.FTPServer((self.host, self.port), handler)
-        self.server.serve_forever()
+        address = (self.host, self.port)
+        self.server = pyftpdlib.servers.ThreadedFTPServer(address, handler)
+        self._serving = True
+        started = time.time()
+        while self._serving:
+            with self._lock:
+                self.server.serve_forever(timeout=1, blocking=False)
+
+            if (time.time() >= started + 10):
+                self.server.close_all()
+                raise Exception('ftp shutdown due to timeout')
+
+        self.server.close_all()
 
     def stop(self):
-        self.server.close_all()
+        self._serving = False
 
 
 @pytest.fixture(scope='module')
-def ftpstub_module(temp_zip, tmpdir_factory):
+def ftpstub_module(dummy_zip, tmpdir_factory):
     port = 2122
     host = 'localhost'
     d = tmpdir_factory.mktemp('ftp').mkdir('remote')
     user_root = str(d)
     remote = str(d.mkdir('test_zip'))
-    shutil.copy(temp_zip, remote)
+    shutil.copy(dummy_zip, remote)
     assert os.path.exists(user_root)
     thread = FTPStubThread(host=host, port=port, user_root=user_root)
     thread.start()
@@ -199,45 +219,55 @@ def test_submit_tasks():
 
 
 @dz_true_false
-def test_tmg_update(ftpstub, dev_7z, dumdir, temp_zip, dz):
-    remote = os.path.basename(os.path.dirname(temp_zip))
-    fname = os.path.basename(temp_zip)
+def test_tmg_update(ftpstub, dev_7z, dumdir, dummy_zip, dz):
+    remote = os.path.basename(os.path.dirname(dummy_zip))
+    fname = os.path.basename(dummy_zip)
     local = dumdir
     up = nxup.TMGUpdater(local, remote, dz)
     assert_update_success(up, local, fname, dz)
 
 
 @dz_true_false
-def test_nx_update(dev_7z, dumdir, temp_zip, dz):
-    remote, fname = os.path.split(temp_zip)
+def test_nx_update(dev_7z, dumdir, dummy_zip, dz):
+    remote, fname = os.path.split(dummy_zip)
     local = dumdir
     up = nxup.NXUpdater(local, remote, dz)
     assert_update_success(up, local, fname, dz)
 
 
 @dz_true_false
-def test_tmg_task_success(ftpstub, dev_7z, dumdir, temp_zip, dz):
-    remote = os.path.basename(os.path.dirname(temp_zip))
-    fname = os.path.basename(temp_zip)
+def test_tmg_task_success(ftpstub, dev_7z, dumdir, dummy_zip, dz):
+    remote = os.path.basename(os.path.dirname(dummy_zip))
+    fname = os.path.basename(dummy_zip)
     local = dumdir
     task = nxup.TMGTask(0, local, remote, fname, dz)
     assert_task_success(task, local, fname, dz)
 
 
 @dz_true_false
-def test_nx_task_success(dev_7z, dumdir, temp_zip, dz):
-    remote, fname = os.path.split(temp_zip)
+def test_nx_task_success(dev_7z, dumdir, dummy_zip, dz):
+    remote, fname = os.path.split(dummy_zip)
     local = dumdir
     task = nxup.NXTask(0, local, remote, fname, dz)
     assert_task_success(task, local, fname, dz)
 
 
-def test_nx_task_fail(dumdir, temp_zip):
-    remote, fname = os.path.split(temp_zip)
+def test_nx_task_fail(dumdir, dummy_zip):
+    remote, fname = os.path.split(dummy_zip)
     task = nxup.NXTask(0, dumdir, 'doesnotexist', fname, False)
     assert task.run().stat == nxup.TASK_FAIL
     task = nxup.NXTask(0, dumdir, remote, 'nope', False)
     assert task.run().stat == nxup.TASK_FAIL
+
+
+def test_task_str():
+    arg_lists = [
+        (None, 'foo', 'bar', 'item', False),
+        (1, 'hello', 'world', 'item2', True)
+    ]
+    for args in arg_lists:
+        task = nxup._Task(*args)
+        s = str(task)
 
 
 def test_make_tasks(dumdir):
@@ -348,23 +378,23 @@ def test_windows_item():
     assert list(expected) == res
 
 
-def test_extract(dev_7z, temp_zip):
-    nxup._extract(temp_zip)
-    assert_zip_contents(os.path.dirname(temp_zip))
+def test_extract(dev_7z, local_zip):
+    nxup._extract(local_zip)
+    assert_zip_contents(os.path.dirname(local_zip))
 
 
 @maya('Extract')
-def test_default_extract(temp_zip):
-    nxup._extract(temp_zip)
-    assert_zip_contents(os.path.dirname(temp_zip))
+def test_default_extract(local_zip):
+    nxup._extract(local_zip)
+    assert_zip_contents(os.path.dirname(local_zip))
 
 
-def test_extract_executable_does_not_exist(dumdir, monkeypatch, temp_zip):
+def test_extract_executable_does_not_exist(dumdir, monkeypatch, local_zip):
     exe = os.path.join(dumdir, 'nonexistent', '7z.exe')
     monkeypatch.setattr(nxup, _7Z_ATTR, exe)
     assert not os.path.exists(exe)
     try:
-        nxup._extract(temp_zip)
+        nxup._extract(local_zip)
     except NXToolsError as e:
         assert exe in e.message
 

@@ -15,7 +15,8 @@ logger = logging.getLogger(__name__)
 _MAX_WORKERS = 3
 _FTP_HOSTNAME = 'ftp'
 _FTP_PORT = 0  # Default FTP port
-_7Z_EXE = 'C:\\Program Files\\7-Zip\\7zG.exe'
+_7Z_EXE = os.path.join('C:\\', 'Program Files', '7-Zip', '7zG.exe')
+
 
 TaskResult = collections.namedtuple('TaskResult', ('id', 'stat', 'reason'))
 TASK_SUCCESS = 0
@@ -27,7 +28,8 @@ def submit_tasks(tasks):
     def run_task(task):
         return task.run()
     pool = ThreadPool(_MAX_WORKERS)
-    return pool.imap_unordered(run_task, tasks)
+    for r in pool.imap_unordered(run_task, tasks):
+        yield r
 
 
 class _Task(object):
@@ -64,7 +66,7 @@ class _Task(object):
         return TaskResult(self._id, stat, reason)
 
     def __str__(self):
-        s = self._id + '< '
+        s = '%s< ' % self._id
         s +=  'Local: %s - ' % self._local_dir
         s += 'Remote: %s - ' % self._remote_dir
         s += 'Item: %s' % self._item
@@ -157,7 +159,7 @@ class NXUpdater(_Updater):
             'NX Remote %s contains:\n%s'
             % (self._remote_dir, '\n'.join(files))
         )
-        matches = [f for f in files if os.path.splitext(f)[1] == '.7z']
+        matches = [f for f in files if os.path.splitext(f)[1] in ('.7z', '.zip')]
         return matches
 
 
@@ -189,7 +191,7 @@ def _ftp_client(pathname):
     logger.debug('Creating FTP connection in directory: ' + pathname)
     try:
         ftp = ftplib.FTP()
-        ftp.connect(_FTP_HOSTNAME, _FTP_PORT)
+        ftp.connect(_FTP_HOSTNAME, _FTP_PORT, timeout=2)
         ftp.login()
         ftp.cwd(pathname)
         yield ftp
@@ -212,7 +214,7 @@ def _extract(zip_path):
         raise NXToolsError('Could not find 7-Zip at %s.' % _7Z_EXE)
     p.wait()
     if p.returncode != 0:
-        out, _ = process.communicate()
+        out, _ = p.communicate()
         errmsg = out.decode('utf-8')
         raise NXToolsError('Could not extract successfully.\n' + errmsg)
     logger.debug('File successfully extracted to: ' + output_dir)
