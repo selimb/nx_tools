@@ -2,7 +2,7 @@ import os
 
 from pkg_resources import resource_filename, Requirement
 
-
+# NOTE: Paths refering to PKG are relative to the location of this file (constants.py).
 PKG = resource_filename('nx_tools', '')
 PKG_DATA = os.path.join(PKG, 'data')
 PKG_BIN = os.path.join(PKG, 'bin')
