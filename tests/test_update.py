@@ -1,23 +1,18 @@
+import io
 import ftplib
 import os
 import shutil
 import time
-import threading
 import zipfile
 
 import pytest
-import pyftpdlib.authorizers
-import pyftpdlib.servers
-import pyftpdlib.handlers
+from stubserver import FTPStubServer
 
 from nx_tools.api import update as nxup
 from nx_tools.api.exceptions import NXToolsError
 import nx_tools
 
 from .conftest import maya
-
-
-_7Z_ATTR = '_7Z_EXE'
 
 
 class DummyTask(nxup._Task):
@@ -151,7 +146,7 @@ def ftpstub(ftpstub_module, monkeypatch):
 
 
 def assert_zip_contents(root):
-    d = os.path.join(root, 'tmg11_win64_1234')
+    d = os.path.join(root, 'test123')
     assert os.path.exists(d)
     assert os.path.isdir(d)
     sub = os.path.join(d, 'testdir')
@@ -163,31 +158,29 @@ def assert_zip_contents(root):
     assert open(f).read() == 'content'
 
 
-def assert_task_success(task, local, fname, dz):
-    results = []
-    for r in nxup.submit_tasks([task,]):
-        results.append(r)
-    assert len(results) == 1
-    result = results[0]
+def test_tmg_task_success(dev_7z, ftpstub, dumdir, temp_zip):
+    raise NotImplementedError
+    pass
+
+def test_nx_task_success(dev_7z, dumdir, temp_zip):
+    remote, fname = os.path.split(temp_zip)
+    local = dumdir
+    delete_zip = False
+    task = NXTask(0, local, remote, temp_zip, False)
+    result = submit_tasks([task,])[0]
     assert result.stat == nxup.TASK_SUCCESS
     local_zip = os.path.join(local, fname)
-    if dz:
-        exp = not os.path.exists(local_zip)
-    else:
-        exp = os.path.exists(local_zip)
-    assert exp
-    assert_zip_contents(local)
+    assert os.path.exists(local_zip)
+    assert_contents(local)
 
 
-def assert_update_success(up, local, fname, dz):
-    new = up.list_new()
-    assert len(new) == 1 and new[0] == fname
-    tasks = up.make_tasks([0,])
-    assert len(tasks) == 1
-    assert_task_success(tasks[0], local, fname, dz)
+def test_nx_task_fail(dumdir, temp_zip):
+    remote, fname = os.path.split(temp_zip)
+    task = nxup.NXTask(0, dumdir, 'doesnotexist', fname, False)
+    assert task.run().stat == nxup.TASK_FAIL
+    task = nxup.NXTask(0, dumdir, remote, 'nope', False)
+    assert task.run().stat == nxup.TASK_FAIL
 
-
-dz_true_false = pytest.mark.parametrize("dz", [(True), (False)])
 
 def test_submit_tasks():
     times = [0.5, 0.2]
@@ -360,10 +353,10 @@ def test_is_new(tmpdir):
     assert not up._is_new(name)
 
 
-def test_ftp_invalid_dir(ftpstub):
+@maya('FTP')
+def test_ftp_invalid_dir():
     with pytest.raises(NXToolsError):
-        with nxup._ftp_client('doesnotexist') as f:
-            pass
+        nxup.TMGUpdater._ftp_connect('doesnotexist')
 
 
 def test_windows_item():

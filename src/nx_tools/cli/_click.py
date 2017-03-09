@@ -1,3 +1,5 @@
+import functools
+
 import click
 
 _suffix = '\n> '
