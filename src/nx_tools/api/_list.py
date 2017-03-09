@@ -9,32 +9,6 @@ from .. import utils
 FMT = "{0}. {1} -- created: {2}"
 
 
-def list_directories(root_dir):
-    """List absolute paths to directories inside `root_dir`.
-
-    Directories are listed in reverse alphabetical order.
-
-    Returns:
-        list
-    """
-    logger = logging.getLogger(__name__)
-    logger.debug('Listing directories in %s' % root_dir)
-    directories = []
-    for d in os.listdir(root_dir):
-        path = os.path.join(root_dir, d)
-        if os.path.isdir(path):
-            directories.append(path)
-    return directories[::-1]
-
-
-def fmt_ctime(x):
-    kits_path = os.path.join(x, 'kits')
-    if os.path.exists(kits_path):
-        x = kits_path
-    t = time.gmtime(os.path.getmtime(x))
-    return time.strftime("%a %b %d", t)
-
-
 def pformat_directories(l, absolute=False):
     """Pretty print directory listing.
 
