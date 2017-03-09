@@ -160,7 +160,6 @@ def assert_zip_contents(root):
 
 def test_tmg_task_success(dev_7z, ftpstub, dumdir, temp_zip):
     raise NotImplementedError
-    pass
 
 def test_nx_task_success(dev_7z, dumdir, temp_zip):
     remote, fname = os.path.split(temp_zip)
