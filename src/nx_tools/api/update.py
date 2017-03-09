@@ -18,7 +18,7 @@ _FTP_PORT = 0  # Default FTP port
 _7Z_EXE = os.path.join('C:\\', 'Program Files', '7-Zip', '7zG.exe')
 
 
-TaskResult = collections.namedtuple('TaskResult', ('id', 'stat', 'reason'))
+TaskResult = collections.namedtuple('TaskResult', ('item', 'stat', 'reason'))
 TASK_SUCCESS = 0
 TASK_FAIL = 1
 TASK_ASSERT = 2
@@ -36,7 +36,7 @@ class _Task(object):
     def __init__(self, id_, local_dir, remote_dir, item, delete_zip):
         self._local_dir = local_dir
         self._remote_dir = remote_dir
-        self._item = item
+        self.item = item
         self._delete_zip = delete_zip
         self._id = id_
 
@@ -44,8 +44,8 @@ class _Task(object):
         stat = TASK_SUCCESS
         reason = None
         try:
-            dest_zip = os.path.join(self._local_dir, self._item)
-            logger.debug('Fetching %s to %s.' % (self._item, dest_zip))
+            dest_zip = os.path.join(self._local_dir, self.item)
+            logger.debug('Fetching %s to %s.' % (self.item, dest_zip))
             self._fetch(dest_zip)
             logger.debug('Fetch to %s complete.' % dest_zip)
             logger.debug('Extracting: '  + dest_zip)
@@ -63,15 +63,7 @@ class _Task(object):
             logger.error(e, exc_info=True)
             reason = 'UNEXPECTED ASSERT. CHECK LOG'
 
-        return TaskResult(self._id, stat, reason)
-
-    def __str__(self):
-        s = '%s< ' % self._id
-        s +=  'Local: %s - ' % self._local_dir
-        s += 'Remote: %s - ' % self._remote_dir
-        s += 'Item: %s' % self._item
-        s += ' >'
-        return s
+        return TaskResult(self.item, stat, reason)
 
     def _fetch(self, dest_zip):
         raise NotImplementedError
@@ -81,7 +73,7 @@ class TMGTask(_Task):
     def _fetch(self, dest_zip):
         with _ftp_client(self._remote_dir) as ftp:
             with open(dest_zip, 'wb') as fh:
-                ftp.retrbinary('RETR ' + self._item, fh.write)
+                ftp.retrbinary('RETR ' + self.item, fh.write)
 #       except IOError as e:
 #           msg = 'Could not write to %s.\n%s' % (dest_zip, e.message)
 #           raise NXToolsError(msg)
@@ -89,11 +81,11 @@ class TMGTask(_Task):
 
 class NXTask(_Task):
     def _fetch(self, dest_zip):
-        src = os.path.join(self._remote_dir, self._item)
+        src = os.path.join(self._remote_dir, self.item)
         try:
             shutil.copy(src, dest_zip)
         except IOError as e:
-            raise NXToolsError('Could not copy %s to %s' % (self._item, dest_zip))
+            raise NXToolsError('Could not copy %s to %s' % (self.item, dest_zip))
 
 class _Updater(object):
 

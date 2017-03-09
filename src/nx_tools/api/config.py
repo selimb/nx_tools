@@ -36,15 +36,14 @@ TRACKED = 'tracked'
 FROZEN = 'frozen'
 LOCAL = 'local'
 
-_TMG_KEY = 'tmg'
-_NX_KEY = 'nx'
+TMG_KEY = 'tmg'
+NX_KEY = 'nx'
+PROJECT_KEYS = (TMG_KEY, NX_KEY)
 
 Branch = collections.namedtuple('Branch', ('remote', 'local', 'stat'))
 
 
 class Environment(object):
-
-    project_keys = (_TMG_KEY, _NX_KEY)
 
     def __init__(self, *fpaths_json):
         if len(fpaths_json) == 0:
@@ -74,24 +73,38 @@ class Environment(object):
         return cls(conf)
 
     def get_option(self, key):
-        if key in self.project_keys:
+        if key in PROJECT_KEYS:
             raise NXToolsError('Use helper functions instead.')
         try:
             return self._conf[key]
         except KeyError:
             raise NXToolsError('Configuration has no %s entry' % key)
 
+    def get_branch(self, project_key, nx_version):
+        self._validate_project(project_key)
+        if project_key == TMG_KEY:
+            return self.get_tmg_branch(nx_version)
+        else:
+            return self.get_nx_branch(nx_version)
+
     def get_tmg_branch(self, nx_version):
-        return self._mk_branch(_TMG_KEY, nx_version, True)
+        return self._mk_branch(TMG_KEY, nx_version, True)
 
     def get_nx_branch(self, nx_version):
-        return self._mk_branch(_NX_KEY, nx_version, False)
+        return self._mk_branch(NX_KEY, nx_version, False)
+
+    def get_versions(self, project_key):
+        self._validate_project(project_key)
+        if project_key == TMG_KEY:
+            return self.list_tmg_versions()
+        else:
+            return self.list_nx_versions()
 
     def list_tmg_versions(self):
-        return self._list_versions(_TMG_KEY)
+        return self._list_versions(TMG_KEY)
 
     def list_nx_versions(self):
-        return self._list_versions(_NX_KEY)
+        return self._list_versions(NX_KEY)
 
     def _list_versions(self, project_key):
         return self._conf[project_key].keys()
@@ -116,6 +129,11 @@ class Environment(object):
             stat = LOCAL
 
         return Branch(local=local, remote=remote, stat=stat)
+
+    @staticmethod
+    def _validate_project(project_key):
+        if project_key not in PROJECT_KEYS:
+            raise NXToolsError('Project key %s not available.' % project_key)
 
     @staticmethod
     def _fuzzy_version(nx_version, available):
@@ -151,7 +169,7 @@ def _parse(json_dict):
     dct = json_dict.copy()
     user_vars = _pop_vars(dct)
     r = {}
-    for project_key in (_TMG_KEY, _NX_KEY):
+    for project_key in PROJECT_KEYS:
         try:
             project = dct.pop(project_key)
         except KeyError:

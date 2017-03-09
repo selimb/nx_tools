@@ -1,8 +1,3 @@
-"""
-Functions for launching NX.
-
-This command uses _list.
-"""
 import logging
 import os
 import subprocess

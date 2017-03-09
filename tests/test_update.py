@@ -169,6 +169,7 @@ def test_nx_task_success(dev_7z, dumdir, temp_zip):
     task = NXTask(0, local, remote, temp_zip, False)
     result = submit_tasks([task,])[0]
     assert result.stat == nxup.TASK_SUCCESS
+    assert result.item == fname
     local_zip = os.path.join(local, fname)
     assert os.path.exists(local_zip)
     assert_contents(local)
@@ -185,8 +186,8 @@ def test_nx_task_fail(dumdir, temp_zip):
 def test_submit_tasks():
     times = [0.5, 0.2]
     results = [
-        nxup.TaskResult(id=0, stat=nxup.TASK_SUCCESS, reason=None),
-        nxup.TaskResult(id=1, stat=nxup.TASK_FAIL, reason='foo')
+        nxup.TaskResult(item=0, stat=nxup.TASK_SUCCESS, reason=None),
+        nxup.TaskResult(item=1, stat=nxup.TASK_FAIL, reason='foo')
     ]
     tasks = []
     for t, result in zip(times, results):
@@ -253,16 +254,6 @@ def test_nx_task_fail(dumdir, dummy_zip):
     assert task.run().stat == nxup.TASK_FAIL
 
 
-def test_task_str():
-    arg_lists = [
-        (None, 'foo', 'bar', 'item', False),
-        (1, 'hello', 'world', 'item2', True)
-    ]
-    for args in arg_lists:
-        task = nxup._Task(*args)
-        s = str(task)
-
-
 def test_make_tasks(dumdir):
     kwargs = dict(local_dir=dumdir, remote_dir='remote', delete_zip=True)
     up = DummyUpdater(**kwargs)
@@ -282,7 +273,7 @@ def test_make_tasks(dumdir):
         return func
 
     def test_item(i, t):
-        return t._item == new_items[i]
+        return t.item == new_items[i]
 
     assert_all(test_type)
     for kw, datum in kwargs.items():

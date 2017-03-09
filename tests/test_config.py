@@ -42,26 +42,32 @@ def test_environment_nx_branch(dummy_env, dummy_dct):
         if ver == 'nx1102':
             prefix = 'local'
         assert branch.local == '%s/%s' % (prefix, ver)
+        assert dummy_env.get_branch(nxconfig.NX_KEY, ver) == branch
     for ver in ['nx9', 'nx8.5']:
         branch = dummy_env.get_nx_branch(ver)
         assert branch.stat == nxconfig.FROZEN
         assert branch.remote == dummy_dct['nx'][ver][0]
         assert branch.local == None
+        assert dummy_env.get_branch(nxconfig.NX_KEY, ver) == branch
     with pytest.raises(NXToolsError):
         dummy_env.get_nx_branch('nx11')
+        assert dummy_env.get_branch(nxconfig.NX_KEY, 'nx11') == branch
         dummy_env.get_nx_branch('nx15')
+        assert dummy_env.get_branch(nxconfig.NX_KEY, 'nx15') == branch
 
-def test_config_tmg_branch(dummy_env):
+def test_environment_tmg_branch(dummy_env):
     for ver in ['nx12', 'nx11']:
         branch = dummy_env.get_tmg_branch(ver)
         assert branch.stat == nxconfig.TRACKED
         assert branch.remote == 'ftp/%s' % ver
         assert branch.local == 'tmg/%s' % ver
+        assert dummy_env.get_branch(nxconfig.TMG_KEY, ver) == branch
     assert dummy_env.get_tmg_branch('nx11') == dummy_env.get_tmg_branch('nx1101')
     branch = dummy_env.get_tmg_branch('dev')
     assert branch.stat == nxconfig.LOCAL
     assert branch.local == 'dev/path'
     assert branch.remote == None
+    assert dummy_env.get_branch(nxconfig.TMG_KEY, 'dev') == branch
 
 
 def test_config_list_versions(dummy_env):
@@ -77,8 +83,8 @@ def test_config_get_option(dummy_env):
     assert dummy_env.get_option('stuff') == 'foo'
     with pytest.raises(NXToolsError):
         dummy_env.get_option('nope')
-        dummy_env.get_option(nxconfig._TMG_KEY)
-        dummy_env.get_option(nxconfig._NX_KEY)
+        dummy_env.get_option(nxconfig.TMG_KEY)
+        dummy_env.get_option(nxconfig.NX_KEY)
 
 
 def test_fuzzy_version_no_match():
