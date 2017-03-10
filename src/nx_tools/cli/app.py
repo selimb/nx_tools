@@ -8,6 +8,8 @@ import click
 
 from . import helpers
 from ..__version__ import __version__
+from ..constants import DEFAULT_CONFIG_PATH, USER_CONFIG_PATH
+from ..api.config import Environment
 # from . import _list
 # from . import update
 # from . import launch
@@ -53,6 +55,7 @@ def nx_tools(ctx, verbose, no_update):
     do_update = helpers.confirm('Do you want to update?', default=False)
     if do_update:
         install(dist_root)
+    inject_env(ctx)
 
 
 @click.command('nx_tools_utils', cls=NamedGroup,
@@ -64,6 +67,7 @@ def nx_tools_utils(ctx, verbose):
     make_logger(verbose)
     logger.debug('nx_tools_utils called:')
     logger.debug(ctx.args)
+    inject_env(ctx)
 
 
 def fetch_latest_version(dist_root):
@@ -79,6 +83,13 @@ def fetch_latest_version(dist_root):
         return None
 
     return new_version
+
+
+def inject_env(ctx):
+    config_paths = [DEFAULT_CONFIG_PATH,]
+    if os.path.exists(USER_CONFIG_PATH):
+        config_paths.append(USER_CONFIG_PATH)
+    ctx.obj = api.config.Environment(config_paths)
 
 
 def install(dist_root):

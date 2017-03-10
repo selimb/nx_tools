@@ -7,7 +7,7 @@
     // Hotkey used to identify NX process (requires identifier to be running)
     "identifier_hotkey": "F9",
     // Default option for NX startup directory with the "nx launch" command
-    "start_in": "D:\"
+    "start_in": "D:\",
     // Delete archive after fetching new item with the "nx update" command
     "delete_zip": false,
     //

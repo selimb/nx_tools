@@ -19,40 +19,6 @@ def echo_result(r):
     click.echo('Fetched %s.' % r.item)
 
 
-def prompt_idx(items):
-    msg = 'Pick items. [a/n/<list-of-numbers>/?]'
-    help_msg = '\n'.join([
-        'a - Pick all',
-        'n - Pick none',
-        '<list-of-numbers> - Comma or space-separated list of indices',
-        '? - Print help'
-    ])
-    num_items = len(items)
-    options = '\n'.join(['%d - %s' % (i, f) for i, f in enumerate(items)])
-    while True:
-        click.echo(options)
-        ans = _click.prompt(msg).strip()
-        print 'ans', ans
-        if ans == 'a':
-            return range(num_items)
-        elif ans == 'n':
-            return []
-
-        sep = ',' if ',' in ans else ' '
-        try:
-            idx = [int(v.strip()) for v in ans.split(sep)]
-        except ValueError:
-            click.echo(help_msg)
-            click.echo()
-            return None
-
-        if any([i >= num_items or i < 0 for i in idx]):
-            click.echo("Please enter indices between 0 and %i" % (num_items - 1))
-            return None
-
-        return idx
-
-
 @click.command('update', short_help='Updater.')
 @click.argument('nx_version', nargs=1)
 @click.option('--nx', is_flag=True, help='Only update NX.')
