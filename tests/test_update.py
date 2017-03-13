@@ -292,8 +292,6 @@ def test_make_tasks(dumdir):
 
 
 def test_make_tasks_local_dir_does_not_exist(tmpdir):
-    print tmpdir
-    assert False
     local_dir = os.path.join(str(tmpdir), 'local_dir')
     up = DummyUpdater(local_dir=local_dir)
     up._new_items = ['a', 'b']

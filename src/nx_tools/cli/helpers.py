@@ -8,8 +8,8 @@ prompt = functools.partial(click.prompt, prompt_suffix=_suffix)
 
 
 _invalid_idx_fmt = 'Please enter indices between 0 and %i.'
-_msg_single_fmt = '%s. [<number>/n/?]'
-_msg_range_fmt = '%s. [a/n/<list-of-numbers>/?]'
+_msg_single_fmt = '%s [<number>/n/?]'
+_msg_range_fmt = '%s [a/n/<list-of-numbers>/?]'
 _help_single = '\n'.join([
     '<number> - Single index',
     'n - Pick none',
@@ -29,6 +29,7 @@ def prompt_idx_range(items, msg):
     options = _mk_options(items)
     while True:
         click.echo(options)
+        click.echo(msg_prompt)
         ans = prompt(msg_prompt).strip()
         if ans == 'a':
             return range(num_items)

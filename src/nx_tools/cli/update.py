@@ -2,7 +2,7 @@ import logging
 
 import click
 
-from . import _click
+from . import helpers
 from ..api import update as nxup
 from ..api.exceptions import NXToolsError
 from ..api.config import TMG_KEY, NX_KEY, TRACKED
@@ -65,7 +65,7 @@ def cli(env, nx_version, nx, tmg, sync):
         if num_items == 1:
             click.echo('One new %s item found.' % name)
             click.echo(fnames[0])
-            yes = _click.confirm('Get this item?', default=True)
+            yes = helpers.confirm('Get this item?', default=True)
             if yes:
                 ids = [0,]
         else:

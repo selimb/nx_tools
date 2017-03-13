@@ -33,14 +33,17 @@ def test_prompt_idx_range(prompt_stub, capfd, ans, expected):
     expect_out = '\n'.join([
         options,
         prompt_msg,
-        helpers._invalid_idx_fmt % len(dummy_items - 1),
+        helpers._invalid_idx_fmt % (len(dummy_items) - 1),
         options,
         prompt_msg,
         helpers._help_range,
+        '',
         options,
         prompt_msg,
         helpers._help_range,
+        '',
         options,
         prompt_msg
-    ])
+    ]) + '\n'
+    assert out == expect_out
 

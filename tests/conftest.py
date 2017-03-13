@@ -32,7 +32,7 @@ class IterableReturnStub(object):
 def prompt_stub(monkeypatch):
     def wrapped(answers):
         stub = IterableReturnStub(answers)
-        monkeypatch.setattr(nx_tools.cli._click, 'prompt', stub)
+        monkeypatch.setattr(nx_tools.cli.helpers, 'prompt', stub)
         return stub
 
     return wrapped
