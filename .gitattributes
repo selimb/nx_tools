@@ -1,2 +1,2 @@
 * eol=lf
-*.sh eol=lf
+*.exe eol=auto
