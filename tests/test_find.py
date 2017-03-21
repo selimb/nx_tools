@@ -1,3 +1,4 @@
+import os
 
 import pytest
 
@@ -22,5 +23,14 @@ def test_find_ugraf(tmpdir):
 
 
 def test_find_tmg(tmpdir):
-    raise NotImplementedError
+    tmg_root = str(tmpdir.mkdir('foo'))
+    assert find.tmg(tmg_root) is None
+    tmg_root = tmpdir.mkdir('svn1234')
+    tmg_root.mkdir('exe').join('MayaMonitor.exe').write('')
+    assert find.tmg(str(tmg_root)) == str(tmg_root)
+    tmg_root = tmpdir.mkdir('svn335')
+    tmg_root.mkdir('tmg').mkdir('exe').join('MayaMonitor.exe').write('')
+    assert find.tmg(str(tmg_root)) == os.path.join(str(tmg_root), 'tmg')
+
+    # tmpdir.mkdir('svn1234').mkdir('
 
