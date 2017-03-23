@@ -1,7 +1,14 @@
 import functools
+import logging
 import os
+import sys
 
 import pytest
+
+logger = logging.getLogger()
+logger.setLevel(logging.DEBUG)
+logger.addHandler(logging.StreamHandler(sys.stdout))
+
 
 import nx_tools
 

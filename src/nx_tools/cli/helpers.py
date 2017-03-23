@@ -22,6 +22,14 @@ _help_range = '\n'.join([
 ])
 
 
+def pformat_cli_args(_locals):
+    args = [
+        '%s: %s' % (k, v) for k, v in _locals.iteritems()
+        if k != 'env' and k[:3] != 'log'
+    ]
+    return 'ARGS\n' + '\n'.join(args)
+
+
 def prompt_idx_range(items, msg):
     msg_prompt = _msg_range_fmt % msg
     num_items = len(items)

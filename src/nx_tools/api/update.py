@@ -162,7 +162,7 @@ class TMGUpdater(_Updater):
     def _list_items(self):
         with _ftp_client(self._remote_dir) as ftp:
             fnames = ftp.nlst()
-        logger.debug('FTP Listing: %s\n' + '\n'.join(fnames))
+        logger.debug('FTP Listing: \n' + '\n'.join(fnames))
 
         return [f for f in fnames if self._is_windows_item(f)]
 

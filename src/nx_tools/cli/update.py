@@ -28,10 +28,11 @@ def cli(env, nx_version, nx, tmg, sync):
     delete_zip = env.get_option('delete_zip')
     get_nx = not tmg
     get_tmg = not nx
+    logger.debug(helpers.pformat_cli_args(locals()))
     updaters = []
-    if get_build:
+    if get_nx:
         updaters.append((nxup.NXUpdater, NX_KEY))
-    if get_patch:
+    if get_tmg:
         updaters.append((nxup.TMGUpdater, TMG_KEY))
 
     tasks = []
@@ -88,7 +89,7 @@ def cli(env, nx_version, nx, tmg, sync):
             r = nxup.submit_tasks((t,))
             echo_result(r)
     else:
-        click.echo('Fetching: ' + ', '.join((t.item for t in tasks)))
+        click.echo('Fetching: ' + ', '.join((t.item for t in tasks)) + '.')
 
         for r in nxup.submit_tasks(tasks):
             echo_result(r)

@@ -1,4 +1,3 @@
-import io
 import ftplib
 import os
 import shutil
@@ -55,32 +54,6 @@ def dumdir(tmpdir):
     return str(tmpdir.mkdir('temp'))
 
 
-@pytest.fixture(scope='module')
-def dummy_zip(tmpdir_factory):
-    tmp = tmpdir_factory.mktemp('remote').mkdir('test_zip')
-    tmp = str(tmp)
-    td = os.path.join(tmp, 'testdir')
-    os.mkdir(td)
-    open(os.path.join(td, 'hello.txt'), 'w').write('content')
-    zip_path = os.path.join(tmp, 'tmg11_win64_1234.zip')
-    with open(zip_path, 'w') as fzip:
-        z = zipfile.ZipFile(fzip, 'w')
-        for root, dirs, files in os.walk(td):
-            for f in files:
-                fname = os.path.join(root, f)
-                arcname = os.path.relpath(fname, tmp)
-                z.write(fname, arcname)
-        z.close()
-    shutil.rmtree(td)
-    return zip_path
-
-
-@pytest.fixture(scope='function')
-def local_zip(dummy_zip, dumdir):
-    dest = os.path.join(dumdir, os.path.basename(dummy_zip))
-    shutil.copy(dummy_zip, dest)
-    return dest
-
 @pytest.fixture(scope='function')
 def dev_7z(monkeypatch):
     envar = 'NX_TOOLS_TEST_7Z_EXE'
@@ -94,6 +67,35 @@ def dev_7z(monkeypatch):
         msg = '7Z executable at %s does not exist.\n' % exe
         msg += 'Specify using %s' % envar
         raise AssertionError(msg)
+
+
+@pytest.fixture(scope='module')
+def dummy_zip(tmpdir_factory):
+    tmp_root = tmpdir_factory.mktemp('dummy_zip')
+    tmp_root = str(tmp_root)
+    subdir = os.path.join(tmp_root, 'stuff')
+    os.mkdir(subdir)
+    open(os.path.join(subdir, 'hello.txt'), 'w').write('content')
+    zip_fpath = os.path.join(tmp_root, 'somearchive.zip')
+    with open(zip_fpath, 'w') as fzip:
+        z = zipfile.ZipFile(fzip, 'w')
+        for root, dirs, files in os.walk(subdir):
+            for f in files:
+                fname = os.path.join(root, f)
+                arcname = os.path.relpath(fname, tmp_root)
+                z.write(fname, arcname)
+        z.close()
+    shutil.rmtree(subdir)
+    return zip_fpath
+
+
+@pytest.fixture(scope='function')
+def local_zip(dummy_zip, dumdir):
+    dest_dir = os.path.join(dumdir, 'dummy_zip')
+    os.mkdir(dest_dir)
+    dest = os.path.join(dest_dir, os.path.basename(dummy_zip))
+    shutil.copy(dummy_zip, dest_dir)
+    return dest
 
 
 class FTPStubThread(threading.Thread):
@@ -117,7 +119,7 @@ class FTPStubThread(threading.Thread):
         started = time.time()
         while self._serving:
             with self._lock:
-                self.server.serve_forever(timeout=1, blocking=False)
+                self.server.serve_forever(timeout=0.1, blocking=False)
 
             if (time.time() >= started + 10):
                 self.server.close_all()
@@ -129,33 +131,25 @@ class FTPStubThread(threading.Thread):
         self._serving = False
 
 
-@pytest.fixture(scope='module')
-def ftpstub_module(dummy_zip, tmpdir_factory):
-    port = 2122
-    host = 'localhost'
-    d = tmpdir_factory.mktemp('ftp').mkdir('remote')
-    user_root = str(d)
-    remote = str(d.mkdir('test_zip'))
-    shutil.copy(dummy_zip, remote)
-    assert os.path.exists(user_root)
-    thread = FTPStubThread(host=host, port=port, user_root=user_root)
-    thread.start()
-    yield (host, port)
-    thread.stop()
-
-
 @pytest.fixture(scope='function')
-def ftpstub(ftpstub_module, monkeypatch):
-    host, port = ftpstub_module
-    monkeypatch.setattr(nxup, '_FTP_HOSTNAME', host)
-    monkeypatch.setattr(nxup, '_FTP_PORT', port)
+def ftpstub(monkeypatch, request):
+    def wrapped(user_root):
+        port = 2122
+        host = 'localhost'
+        monkeypatch.setattr(nxup, '_FTP_HOSTNAME', host)
+        monkeypatch.setattr(nxup, '_FTP_PORT', port)
+        thread = FTPStubThread(host=host, port=port, user_root=user_root)
+        thread.start()
+        def fin():
+            thread.stop()
+        request.addfinalizer(fin)
+    return wrapped
 
 
-def assert_zip_contents(root):
-    d = os.path.join(root, 'tmg11_win64_1234')
+def assert_extracted_contents(d):
     assert os.path.exists(d)
     assert os.path.isdir(d)
-    sub = os.path.join(d, 'testdir')
+    sub = os.path.join(d, 'stuff')
     assert os.path.exists(sub)
     assert os.path.isdir(sub)
     f = os.path.join(sub, 'hello.txt')
@@ -178,7 +172,7 @@ def assert_task_success(task, local, fname, dz):
     if dz:
         exp = not exp
     assert exp
-    assert_zip_contents(local)
+    assert_extracted_contents(os.path.splitext(local_zip)[0])
     assert result.item == fname
 
 
@@ -224,27 +218,39 @@ def test_submit_tasks():
 
 @dz_true_false
 def test_tmg_update(ftpstub, dev_7z, dumdir, dummy_zip, dz):
-    remote = os.path.basename(os.path.dirname(dummy_zip))
-    fname = os.path.basename(dummy_zip)
-    local = dumdir
-    up = nxup.TMGUpdater(local, remote, dz)
+    remote_ftp = 'downloads/patches/nx423'
+    ftp_root = os.path.join(dumdir, 'ftp')
+    remote_dir = os.path.join(ftp_root, *remote_ftp.split('/'))
+    os.makedirs(remote_dir)
+    fname = 'tmg_win64_svn458.zip'
+    shutil.copy(dummy_zip, os.path.join(remote_dir, fname))
+    ftpstub(user_root=ftp_root)
+    local = os.path.join(dumdir, 'local', 'patches')
+    os.makedirs(local)
+    up = nxup.TMGUpdater(local, remote_ftp, dz)
     assert_update_success(up, local, fname, dz)
 
 
 @dz_true_false
-def test_nx_update(dev_7z, dumdir, dummy_zip, dz):
-    remote, fname = os.path.split(dummy_zip)
-    local = dumdir
+def test_nx_update(dev_7z, dumdir, local_zip, dz):
+    remote, fname = os.path.split(local_zip)
+    local = os.path.join(dumdir, 'local')
     up = nxup.NXUpdater(local, remote, dz)
     assert_update_success(up, local, fname, dz)
 
 
 @dz_true_false
 def test_tmg_task_success(ftpstub, dev_7z, dumdir, dummy_zip, dz):
-    remote = os.path.basename(os.path.dirname(dummy_zip))
-    fname = os.path.basename(dummy_zip)
-    local = dumdir
-    task = nxup.TMGTask(0, local, remote, fname, dz)
+    remote_ftp = 'downloads/patches/nx123'
+    ftp_root = os.path.join(dumdir, 'ftp')
+    remote_dir = os.path.join(ftp_root, *remote_ftp.split('/'))
+    os.makedirs(remote_dir)
+    fname = 'tmg_win64_svn456.zip'
+    shutil.copy(dummy_zip, os.path.join(remote_dir, fname))
+    ftpstub(user_root=ftp_root)
+    local = os.path.join(dumdir, 'local')
+    os.mkdir(local)
+    task = nxup.TMGTask(0, local, remote_ftp, fname, dz)
     assert_task_success(task, local, fname, dz)
 
 
@@ -374,13 +380,13 @@ def test_windows_item():
 
 def test_extract(dev_7z, local_zip):
     nxup._extract(local_zip)
-    assert_zip_contents(os.path.dirname(local_zip))
+    assert_extracted_contents(os.path.splitext(local_zip)[0])
 
 
 @maya('Extract')
 def test_default_extract(local_zip):
     nxup._extract(local_zip)
-    assert_zip_contents(os.path.dirname(local_zip))
+    assert_extracted_contents(os.path.splitext(local_zip)[0])
 
 
 def test_extract_executable_does_not_exist(dumdir, monkeypatch, local_zip):
